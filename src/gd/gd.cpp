@@ -7,6 +7,9 @@
 namespace gd {
 
 std::atomic<void*> g_fmodEngine{nullptr}; // catturato da hacks/core_hooks (FMODAudioEngine::update)
+std::atomic<void*> g_editorUI{nullptr};   // catturato da hacks/core_hooks (EditorUI::init)
+
+void* editorUI() { return editorLayer() ? g_editorUI.load() : nullptr; }
 
 void* gameManager() {
     static void* gm = nullptr;
@@ -140,11 +143,14 @@ bool versionMatches() {
         addr::GameManager::sharedState,  addr::PlayLayer::levelComplete, addr::PauseLayer::customSetup,
         addr::EditorUI::init,
     };
-    int ok = 0;
-    for (auto rva : probes) ok += looksLikeFunctionStart(rva);
-    const int total = static_cast<int>(sizeof(probes) / sizeof(probes[0]));
+    int ok = 0, total = 0;
+    for (auto rva : probes) {
+        if (!rva) continue;
+        total++;
+        ok += looksLikeFunctionStart(rva);
+    }
     MH_LOG("verifica versione %s: %d/%d funzioni riconosciute", GD_VERSION_STR, ok, total);
-    result = ok * 10 >= total * 8 ? 1 : 0; // almeno l'80%
+    result = total > 0 && ok * 10 >= total * 8 ? 1 : 0; // almeno l'80%
     return result == 1;
 }
 

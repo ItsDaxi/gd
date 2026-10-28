@@ -74,9 +74,13 @@ void setZOrder(void* node, int z);
 void removeFromParent(void* node);
 int tag(void* node);
 
-// --- CCRGBAProtocol ---
-void setOpacity(void* node, uint8_t o); // tramite vtable del nodo (CCNodeRGBA/CCSprite)
-void setColor(void* node, Color3B c);
+// --- CCRGBAProtocol (interfaccia secondaria: serve il sotto-oggetto corretto) ---
+void setOpacity(void* sprite, uint8_t o); // per CCSprite e derivati (GameObject, ecc.)
+void setColor(void* sprite, Color3B c);
+
+// --- CCLabelBMFont ---
+void labelSetString(void* label, const char* text);
+const char* labelGetString(void* label);
 
 // --- CCArray ---
 unsigned arrayCount(void* arr);

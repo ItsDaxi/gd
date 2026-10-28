@@ -7,6 +7,7 @@
 namespace gdv2_2091 {
 
 // --- indirizzi funzioni (RVA rispetto a GeometryDash.exe) ---
+// 0 = funzione non disponibile per questa versione (l'hook viene saltato)
 namespace addr {
 namespace AppDelegate {
     inline constexpr uintptr_t applicationDidFinishLaunching = 0x981f0; // virtual bool applicationDidFinishLaunching()
@@ -18,7 +19,6 @@ namespace AppDelegate {
     inline constexpr uintptr_t trySaveGame = 0x98ad0; // virtual void trySaveGame(bool force)
     inline constexpr uintptr_t willSwitchToScene = 0x98cc0; // virtual void willSwitchToScene(cocos2d::CCScene* scene)
     inline constexpr uintptr_t pauseGame = 0x989f0; // void pauseGame()
-    inline constexpr uintptr_t resumeSound = 0x9999999; // void resumeSound()
     inline constexpr uintptr_t setupGLView = 0x97cc0; // void setupGLView()
 }
 namespace BoomListView {
@@ -1306,7 +1306,6 @@ namespace GameLevelManager {
     inline constexpr uintptr_t likeItem = 0x25a9b0; // void likeItem(LikeItemType type, int id, bool liked, int parentID)
     inline constexpr uintptr_t limitSavedLevels = 0x222220; // void limitSavedLevels()
     inline constexpr uintptr_t makeTimeStamp = 0x221c30; // void makeTimeStamp(char const* key)
-    inline constexpr uintptr_t markItemAsLiked = 0x9999999; // void markItemAsLiked(LikeItemType type, int id, bool liked, int parentID)
     inline constexpr uintptr_t markLevelAsDownloaded = 0x233950; // void markLevelAsDownloaded(int id)
     inline constexpr uintptr_t messageWasRemoved = 0x23bfd0; // void messageWasRemoved(int id, bool sent)
     inline constexpr uintptr_t muteUser = 0x24f700; // TodoReturn muteUser(int, bool)
@@ -2008,7 +2007,6 @@ namespace LevelTools {
     inline constexpr uintptr_t getAudioString = 0x466470; // static std::string getAudioString(int id)
     inline constexpr uintptr_t getAudioTitle = 0x462870; // static std::string getAudioTitle(int id)
     inline constexpr uintptr_t getLevel = 0x45ffe0; // static GJGameLevel* getLevel(int id, bool noString)
-    inline constexpr uintptr_t getLevelList = 0x9999999; // static std::unordered_set<int> getLevelList()
     inline constexpr uintptr_t getSongObject = 0x467d40; // static SongInfoObject* getSongObject(int id)
     inline constexpr uintptr_t moveTriggerObjectsToArray = 0x468130; // static void moveTriggerObjectsToArray(cocos2d::CCArray* objects, cocos2d::CCDictionary* objectsDict, int index)
     inline constexpr uintptr_t nameForArtist = 0x464040; // static std::string nameForArtist(int id)
@@ -2100,8 +2098,6 @@ namespace MusicDownloadManager {
     inline constexpr uintptr_t downloadSongStarted = 0x483c60; // void downloadSongStarted(int id)
     inline constexpr uintptr_t encodeCustomSFX = 0x48a310; // TodoReturn encodeCustomSFX(std::set<int> const&)
     inline constexpr uintptr_t exportCustomSFXToFile = 0x489310; // TodoReturn exportCustomSFXToFile()
-    inline constexpr uintptr_t filterMusicByArtistID = 0x9999999; // cocos2d::CCArray* filterMusicByArtistID(int id, cocos2d::CCArray* songs)
-    inline constexpr uintptr_t filterMusicByTag = 0x9999999; // cocos2d::CCArray* filterMusicByTag(int id, cocos2d::CCArray* songs)
     inline constexpr uintptr_t generateCustomContentURL = 0x490c20; // std::string generateCustomContentURL(std::string path)
     inline constexpr uintptr_t getAudioFilesize = 0x48be10; // TodoReturn getAudioFilesize(std::string, std::string)
     inline constexpr uintptr_t getCustomContentURL = 0x48b630; // void getCustomContentURL()

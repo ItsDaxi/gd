@@ -1,0 +1,43 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        gd: ["22091", "2209"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Controllo indirizzi degli hook
+        shell: bash
+        run: |
+          if [ "${{ matrix.gd }}" = "22091" ]; then
+            python tools/check_hooks.py src/gd/generated/gd_2_2091.hpp
+          else
+            python tools/check_hooks.py src/gd/generated/gd_2_209.hpp || echo "::warning::alcuni hook non sono disponibili per 2.209 (vedi log)"
+          fi
+
+      - name: Configura (MSVC x64)
+        run: cmake -S . -B build -A x64 -DGD_VERSION=${{ matrix.gd }}
+
+      - name: Compila
+        run: cmake --build build --config Release --parallel
+
+      - name: Prepara pacchetto
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp build/Release/MegaHackGD.dll build/Release/XInput1_4.dll build/Release/MegaHackInjector.exe dist/
+          cp README.md dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MegaHackGD-GD${{ matrix.gd }}
+          path: dist/

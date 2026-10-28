@@ -1,4 +1,5 @@
 #include "cocos.hpp"
+#include "core/memory.hpp"
 
 #include <windows.h>
 #include <string>
@@ -6,6 +7,8 @@
 #include <mutex>
 
 namespace cc {
+
+static bool mh_readable(const void* p, size_t n) { return mh::mem::readable(p, n); }
 
 static HMODULE cocosModule() {
     static HMODULE m = GetModuleHandleW(L"libcocos2d.dll");
@@ -184,15 +187,77 @@ int tag(void* node) {
     return call<int>("?getTag@CCObject@cocos2d@@UEBAHXZ", node);
 }
 
-void setOpacity(void* node, uint8_t o) {
-    // Solo per CCNodeRGBA/CCSprite/CCLayerColor diretti: usa l'export specifico
-    if (!node) return;
-    call<void>("?setOpacity@CCNodeRGBA@cocos2d@@UEAAXE@Z", node, o);
+// Offset del sotto-oggetto CCRGBAProtocol dentro CCSprite (= sizeof(CCNode), verificato dai size-check)
+static constexpr size_t kSpriteRGBAOffset = 0x140;
+
+static void** subVtable(void* obj, size_t offset) {
+    auto sub = reinterpret_cast<char*>(obj) + offset;
+    if (!mh_readable(sub, 8)) return nullptr;
+    auto vt = *reinterpret_cast<void***>(sub);
+    return mh_readable(vt, 8) ? vt : nullptr;
 }
 
-void setColor(void* node, Color3B c) {
-    if (!node) return;
-    call<void>("?setColor@CCNodeRGBA@cocos2d@@UEAAXAEBU_ccColor3B@2@@Z", node, static_cast<const Color3B*>(&c));
+void setOpacity(void* sprite, uint8_t o) {
+    if (!sprite) return;
+    static int idx = vtableIndex("??_7CCSprite@cocos2d@@6BCCRGBAProtocol@1@@", "?setOpacity@CCSprite@cocos2d@@UEAAXE@Z");
+    auto vt = subVtable(sprite, kSpriteRGBAOffset);
+    if (!vt || idx < 0) return;
+    reinterpret_cast<void (*)(void*, uint8_t)>(vt[idx])(reinterpret_cast<char*>(sprite) + kSpriteRGBAOffset, o);
+}
+
+void setColor(void* sprite, Color3B c) {
+    if (!sprite) return;
+    static int idx = vtableIndex("??_7CCSprite@cocos2d@@6BCCRGBAProtocol@1@@", "?setColor@CCSprite@cocos2d@@UEAAXAEBU_ccColor3B@2@@Z");
+    auto vt = subVtable(sprite, kSpriteRGBAOffset);
+    if (!vt || idx < 0) return;
+    reinterpret_cast<void (*)(void*, const Color3B*)>(vt[idx])(reinterpret_cast<char*>(sprite) + kSpriteRGBAOffset, &c);
+}
+
+// Trova l'offset di un sotto-oggetto cercando il puntatore alla sua vftable nell'oggetto
+static long findSubobject(void* obj, const char* vftableSymbol) {
+    static std::unordered_map<std::string, long> cache;
+    auto vt = resolve(vftableSymbol);
+    if (!obj || !vt) return -1;
+    auto p = reinterpret_cast<void**>(obj);
+    auto it = cache.find(vftableSymbol);
+    if (it != cache.end() && p[it->second / 8] == vt) return it->second;
+    if (!mh_readable(p, 0x80 * 8)) return -1;
+    for (int i = 0; i < 0x80; i++) {
+        if (p[i] == vt) {
+            cache[vftableSymbol] = i * 8;
+            return i * 8;
+        }
+    }
+    return -1;
+}
+
+void labelSetString(void* label, const char* text) {
+    if (!label || !text) return;
+    static const char* vtSym = "??_7CCLabelBMFont@cocos2d@@6BCCLabelProtocol@1@@";
+    static int idx = [] {
+        int i = vtableIndex(vtSym, "?setString@CCLabelBMFont@cocos2d@@UEAAXPEBD@Z");
+        return i >= 0 ? i : 0;
+    }();
+    long off = findSubobject(label, vtSym);
+    if (off < 0) return;
+    auto sub = reinterpret_cast<char*>(label) + off;
+    auto vt = *reinterpret_cast<void***>(sub);
+    reinterpret_cast<void (*)(void*, const char*)>(vt[idx])(sub, text);
+}
+
+const char* labelGetString(void* label) {
+    if (!label) return "";
+    static const char* vtSym = "??_7CCLabelBMFont@cocos2d@@6BCCLabelProtocol@1@@";
+    static int idx = [] {
+        int i = vtableIndex(vtSym, "?getString@CCLabelBMFont@cocos2d@@UEAAPEBDXZ");
+        return i >= 0 ? i : 1;
+    }();
+    long off = findSubobject(label, vtSym);
+    if (off < 0) return "";
+    auto sub = reinterpret_cast<char*>(label) + off;
+    auto vt = *reinterpret_cast<void***>(sub);
+    auto r = reinterpret_cast<const char* (*)(void*)>(vt[idx])(sub);
+    return r ? r : "";
 }
 
 // ---------------------------------------------------------------- CCArray

@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <string>
+#include <type_traits>
 
 #include "core/memory.hpp"
 
@@ -31,8 +32,13 @@ namespace off = gdg::off;
 
 // Chiama una funzione di GeometryDash.exe dato il suo RVA.
 // x64 Windows: un'unica convenzione di chiamata, `this` e' il primo argomento.
+// rva == 0: funzione non disponibile per questa versione -> nessuna chiamata
 template <class R, class... A>
 inline R call(uintptr_t rva, A... args) {
+    if (rva == 0) {
+        if constexpr (std::is_void_v<R>) return;
+        else return R{};
+    }
     return reinterpret_cast<R (*)(A...)>(mh::mem::base() + rva)(args...);
 }
 
@@ -73,6 +79,7 @@ void* playLayer();     // PlayLayer corrente o nullptr
 void* editorLayer();   // LevelEditorLayer corrente o nullptr
 void* gameLayer();     // GJBaseGameLayer corrente (PlayLayer o editor) o nullptr
 void* level();         // GJGameLevel del layer corrente
+void* editorUI();      // EditorUI dell'editor aperto (catturato da EditorUI::init)
 
 void* player1(void* layer);
 void* player2(void* layer);

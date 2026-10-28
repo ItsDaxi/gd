@@ -12,6 +12,7 @@
 
 namespace gd {
 extern std::atomic<void*> g_fmodEngine;
+extern std::atomic<void*> g_editorUI;
 }
 
 namespace mh::gui {
@@ -142,6 +143,7 @@ void h_bglUpdate(void* self, float dt) {
     bool run = true;
     ev::bglPreUpdate()(self, dt, run);
     if (!run) return;
+    ev::bglTick()(self);
     o_bglUpdate(self, dt);
     ev::bglPostUpdate()(self, dt);
 }
@@ -313,6 +315,7 @@ bool h_isColorUnlocked(void* self, int id, int type) {
 
 void (*o_pauseSetup)(void*);
 void h_pauseSetup(void* self) {
+    ev::pauseSetupPre()(self);
     o_pauseSetup(self);
     ev::pauseSetup()(self);
 }
@@ -346,7 +349,10 @@ void h_menuGameUpdate(void* self, float dt) {
 bool (*o_editorUIInit)(void*, void*);
 bool h_editorUIInit(void* self, void* lel) {
     bool r = o_editorUIInit(self, lel);
-    if (r) ev::editorInit()(self);
+    if (r) {
+        gd::g_editorUI.store(self);
+        ev::editorInit()(self);
+    }
     return r;
 }
 

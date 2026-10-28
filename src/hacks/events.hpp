@@ -56,6 +56,7 @@ MH_EVENT(plLevelEndAnim, void*, bool& /*allow*/)
 
 // ------------------------------------------------------------- GJBaseGameLayer
 MH_EVENT(bglPreUpdate, void*, float& /*dt*/, bool& /*run*/)
+MH_EVENT(bglTick, void*)                             // update che verra' eseguito davvero
 MH_EVENT(bglPostUpdate, void*, float)
 MH_EVENT(bglButton, void*, bool /*down*/, int /*button*/, bool /*p1*/, bool& /*allow*/)
 MH_EVENT(bglCollisionPre, void*, void* /*player*/, void** /*objs*/, int& /*count*/)
@@ -85,6 +86,7 @@ MH_EVENT(circleWave, void* /*wave*/)                 // CCCircleWave creato
 MH_EVENT(itemUnlocked, int /*type*/, int /*id*/, bool& /*result*/)
 MH_EVENT(iconUnlocked, int /*id*/, int /*type*/, bool& /*result*/)
 MH_EVENT(colorUnlocked, int /*id*/, int /*type*/, bool& /*result*/)
+MH_EVENT(pauseSetupPre, void* /*pauseLayer*/)
 MH_EVENT(pauseSetup, void* /*pauseLayer*/)
 MH_EVENT(endLevelSetup, void* /*endLevelLayer*/)
 MH_EVENT(uiLayerInit, void* /*uiLayer*/)

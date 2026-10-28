@@ -51,6 +51,12 @@ bool create(const char* name, void* target, void* detour, void** original) {
     return ok;
 }
 
+bool skipped(const char* name) {
+    MH_WARN("hook %s: indirizzo non disponibile per questa versione, saltato", name);
+    g_hooks.push_back({name, 0, false});
+    return false;
+}
+
 void enableAll() {
     MH_STATUS s = MH_EnableHook(MH_ALL_HOOKS);
     if (s != MH_OK) MH_ERR("MH_EnableHook: %s", MH_StatusToString(s));

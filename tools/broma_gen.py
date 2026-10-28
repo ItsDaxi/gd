@@ -93,9 +93,15 @@ def strip_templates(s: str) -> str:
     return out
 
 
+PLACEHOLDERS = {0x9999999, 0x99999999}
+
+
 def parse_binding(spec: str) -> int | None:
     m = re.search(r"\bwin\s+(0x[0-9a-fA-F]+)", spec)
-    return int(m.group(1), 16) if m else None
+    if not m:
+        return None
+    v = int(m.group(1), 16)
+    return None if v in PLACEHOLDERS else v
 
 
 def parse_statement(stmt: str, k: Klass):
@@ -177,6 +183,9 @@ def parse_statement(stmt: str, k: Klass):
     k.items.append(Member(m.group(1).strip(), m.group(2)))
 
 
+PLATFORM_BLOCK = re.compile(r"^(win|android|android32|android64|mac|imac|m1|ios)(\s*,\s*(win|android|android32|android64|mac|imac|m1|ios))*$")
+
+
 def parse_class_body(body: str, k: Klass):
     # spezza in statement: ';' al livello 0, oppure blocchi {} di funzioni inline
     i, depth, cur = 0, 0, ""
@@ -184,7 +193,7 @@ def parse_class_body(body: str, k: Klass):
         ch = body[i]
         if ch == "{":
             if depth == 0:
-                # corpo inline di una funzione: lo saltiamo ma chiudiamo lo statement
+                start = i
                 d = 0
                 while i < len(body):
                     if body[i] == "{":
@@ -194,7 +203,15 @@ def parse_class_body(body: str, k: Klass):
                         if d == 0:
                             break
                     i += 1
-                parse_statement(cur, k)
+                head = cur.strip()
+                if PLATFORM_BLOCK.match(head):
+                    # blocco di membri specifico per piattaforma: "android, ios { ... }"
+                    plats = {p.strip() for p in head.split(",")}
+                    if "win" in plats:
+                        parse_class_body(body[start + 1:i], k)
+                else:
+                    # corpo inline di una funzione: lo saltiamo ma chiudiamo lo statement
+                    parse_statement(cur, k)
                 cur = ""
                 i += 1
                 continue
@@ -577,6 +594,10 @@ def main():
     ap.add_argument("--classes-file", default=None, help="file con una classe per riga")
     ap.add_argument("--cocos-ref", default=None, help="versione da cui dedurre le dimensioni cocos2d (se mancano i size-check)")
     ap.add_argument("--verbose", action="store_true")
+    ap.add_argument("--names-from", default=None,
+                    help="versione di riferimento: i nomi presenti li' ma assenti qui vengono emessi con indirizzo 0")
+    ap.add_argument("--zero-shared", action="store_true",
+                    help="azzera gli indirizzi usati da piu' funzioni (dati incompleti nelle bindings)")
     a = ap.parse_args()
 
     root = Path(a.bindings)
@@ -644,26 +665,58 @@ def main():
     out.append(f"namespace gdv{ver_id} {{")
     out.append("")
     out.append("// --- indirizzi funzioni (RVA rispetto a GeometryDash.exe) ---")
+    out.append("// 0 = funzione non disponibile per questa versione (l'hook viene saltato)")
     out.append("namespace addr {")
-    emitted = set()
-    for name in sorted(classes):
-        k = classes[name]
-        if name.startswith("cocos2d") or name.startswith("FMOD::") or name == "<free>":
+
+    def func_table(cmap):
+        """{classe: [(ident, addr|None, firma)]} con nomi stabili per gli overload"""
+        res = {}
+        for name in sorted(cmap):
+            k = cmap[name]
+            if name.startswith("cocos2d") or name.startswith("FMOD::") or name == "<free>":
+                continue
+            if wanted_set and name not in wanted_set:
+                continue
+            counts: dict[str, int] = {}
+            rows = []
+            for f in k.funcs:
+                base = cpp_ident(f.name.replace("~", "dtor_"))
+                if f.name == name:
+                    base = "ctor"
+                sig = re.sub(r"\s+", " ", f"{'static ' if f.is_static else ''}{'virtual ' if f.is_virtual else ''}{f.ret} {f.name}({f.params}){' const' if f.is_const else ''}")
+                if f.win is None:
+                    continue
+                n = counts.get(base, 0)
+                counts[base] = n + 1
+                rows.append((base if n == 0 else f"{base}_{n}", f.win, sig))
+            res[name] = rows
+        return res
+
+    table = func_table(classes)
+    if a.names_from:
+        ref_classes: dict[str, Klass] = {}
+        for f in ["Cocos2d.bro", "Extras.bro", "FMOD.bro", "Kazmath.bro", "GeometryDash.bro"]:
+            p = root / "bindings" / a.names_from / f
+            if p.exists():
+                parse_bro(p.read_text(encoding="utf-8", errors="ignore"), ref_classes, [])
+        ref = func_table(ref_classes)
+        for cname, rows in ref.items():
+            have = {r[0] for r in table.get(cname, [])}
+            for ident, _, sig in rows:
+                if ident not in have:
+                    table.setdefault(cname, []).append((ident, None, sig + " [assente in questa versione]"))
+    if a.zero_shared:
+        from collections import Counter
+        cnt = Counter(r[1] for rows in table.values() for r in rows if r[1])
+        for cname, rows in table.items():
+            table[cname] = [(i, (ad if not ad or cnt[ad] == 1 else None), sg + ("" if not ad or cnt[ad] == 1 else " [indirizzo condiviso: azzerato]")) for i, ad, sg in rows]
+    for cname in sorted(table):
+        rows = table[cname]
+        if not rows:
             continue
-        fl = [f for f in k.funcs if f.win is not None]
-        if not fl or (wanted_set and name not in wanted_set):
-            continue
-        out.append(f"namespace {cpp_ident(name)} {{")
-        counts: dict[str, int] = {}
-        for f in fl:
-            base = cpp_ident(f.name.replace("~", "dtor_"))
-            if f.name == name:
-                base = "ctor"
-            n = counts.get(base, 0)
-            counts[base] = n + 1
-            ident = base if n == 0 else f"{base}_{n}"
-            sig = re.sub(r"\s+", " ", f"{'static ' if f.is_static else ''}{'virtual ' if f.is_virtual else ''}{f.ret} {f.name}({f.params}){' const' if f.is_const else ''}")
-            out.append(f"    inline constexpr uintptr_t {ident} = {hex(f.win)}; // {sig}")
+        out.append(f"namespace {cpp_ident(cname)} {{")
+        for ident, ad, sig in rows:
+            out.append(f"    inline constexpr uintptr_t {ident} = {hex(ad) if ad else '0'}; // {sig}")
         out.append("}")
     ffl = [f for f in free if f.win is not None]
     if ffl:

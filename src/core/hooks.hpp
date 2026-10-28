@@ -30,10 +30,12 @@ struct Info {
 const std::vector<Info>& list();
 
 void* resolveExport(const char* module, const char* symbol);
+bool skipped(const char* name);
 uintptr_t gdBase();
 
 template <class F>
 inline bool gd(const char* name, uintptr_t rva, F* detour, F** original) {
+    if (rva == 0) return skipped(name); // non disponibile per questa versione di GD
     return create(name, reinterpret_cast<void*>(gdBase() + rva), reinterpret_cast<void*>(detour),
                   reinterpret_cast<void**>(original));
 }

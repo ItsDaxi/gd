@@ -744,13 +744,23 @@ Hack& spSwitcher = hack("LEVEL", "LEVEL/STARTPOS_SWITCHER/HACK_STARTPOS_SWITCHER
         }
     });
 
-std::vector<void*> startPositions(void* pl) {
-    std::vector<void*> v;
-    forEach(GDF(pl, GJBaseGameLayer, m_startPosObjects, void*), [&](void* o) { v.push_back(o); });
-    std::sort(v.begin(), v.end(), [](void* a, void* b) {
-        return GDF(a, GameObject, m_positionX, double) < GDF(b, GameObject, m_positionX, double);
-    });
-    return v;
+// Le StartPos (oggetto ID 31) vengono raccolte una volta a inizio livello da m_objects:
+// funziona allo stesso modo su 2.209 e 2.2091
+std::vector<void*> s_startPositions;
+void* s_startPosLayer = nullptr;
+
+const std::vector<void*>& startPositions(void* pl) {
+    if (pl != s_startPosLayer) {
+        s_startPosLayer = pl;
+        s_startPositions.clear();
+        forEach(GDF(pl, GJBaseGameLayer, m_objects, void*), [](void* o) {
+            if (o && GDF(o, GameObject, m_objectID, int) == 31) s_startPositions.push_back(o);
+        });
+        std::sort(s_startPositions.begin(), s_startPositions.end(), [](void* a, void* b) {
+            return GDF(a, GameObject, m_positionX, double) < GDF(b, GameObject, m_positionX, double);
+        });
+    }
+    return s_startPositions;
 }
 
 bool allowedHere(void* pl) {
@@ -763,7 +773,7 @@ bool allowedHere(void* pl) {
 void switchTo(int index) {
     auto pl = gd::playLayer();
     if (!pl || !allowedHere(pl)) return;
-    auto sps = startPositions(pl);
+    const auto& sps = startPositions(pl);
     int n = static_cast<int>(sps.size());
     if (n == 0) return;
     if (index < 0) index = n;
@@ -777,11 +787,13 @@ void switchTo(int index) {
 int s_spQueued = 0;
 } // namespace
 
+MH_ON(ev::plQuit, [](void*) { s_startPosLayer = nullptr; });
 MH_ON(ev::plInit, [](void* pl) {
     s_spIndex = 0;
+    s_startPosLayer = nullptr;
     auto cur = GDF(pl, GJBaseGameLayer, m_startPosObject, void*);
     if (!cur) return;
-    auto sps = startPositions(pl);
+    const auto& sps = startPositions(pl);
     for (size_t i = 0; i < sps.size(); i++)
         if (sps[i] == cur) s_spIndex = static_cast<int>(i) + 1;
 });
@@ -816,7 +828,7 @@ MH_ON(ev::plDeath, [](void*, void*) {
 static gui::Overlay s_spOverlay([] {
     auto pl = gd::playLayer();
     if (!spSwitcher.enabled || s_spHide || !pl) return;
-    auto sps = startPositions(pl);
+    const auto& sps = startPositions(pl);
     if (sps.empty()) return;
     char buf[64];
     snprintf(buf, sizeof(buf), "<   %d / %d   >", s_spIndex, static_cast<int>(sps.size()));
@@ -856,9 +868,13 @@ bool s_ssLegacy = false, s_ssGm = true, s_ssSpeed = true, s_ssSize = true, s_ssM
 } // namespace
 
 // Auto Song Download: preme "Download" nella pagina del livello
+namespace mh::creator {
+void beforeLevelInfo(void* level); // Copy Hack (creator.cpp)
+}
 namespace {
 bool (*o_levelInfoInit)(void*, void*, bool);
 bool h_levelInfoInit(void* self, void* level, bool challenge) {
+    creator::beforeLevelInfo(level);
     bool r = o_levelInfoInit(self, level, challenge);
     if (r && autoSongDownload.enabled) {
         auto widget = GDF(self, LevelInfoLayer, m_songWidget, void*);
