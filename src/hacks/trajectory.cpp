@@ -47,13 +47,21 @@ bool ensureNodes(void* pl) {
     if (!objLayer) return false;
     s_container = cc::nodeCreate();
     s_drawNode = cc::drawNodeCreate();
-    if (!s_container || !s_drawNode) return false;
+    if (!s_container || !s_drawNode) {
+        s_crashed = true;
+        return false;
+    }
     cc::setVisible(s_container, false);
     cc::addChild(objLayer, s_container, -1000);
     cc::addChild(objLayer, s_drawNode, 1000);
     for (auto& f : s_fake) {
         f = gd::call<void*>(gd::addr::PlayerObject::create, 1, 1, pl, s_container, true);
-        if (!f) return false;
+        if (!f) {
+            // non riprovare a ogni frame (i nodi gia' aggiunti resterebbero nel livello)
+            s_crashed = true;
+            MH_LOG("Show Trajectory: PlayerObject::create non riuscito");
+            return false;
+        }
         cc::addChild(s_container, f, 0);
     }
     s_layer = pl;
