@@ -6509,6 +6509,7 @@ namespace VideoOptionsLayer { // sizeof = 0x2f8
 // --- offset NON validati (la dimensione calcolata non combacia col size-check) ---
 // I membri iniziali sono spesso corretti, quelli finali possono essere sbagliati.
 namespace off_unchecked {
+using namespace off;
 } // namespace off_unchecked
 
 } // namespace

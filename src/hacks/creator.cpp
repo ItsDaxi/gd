@@ -10,7 +10,6 @@ Hack& H(const char* id) { return hack("CREATOR", id); }
 Hack& accurateSave = H("CREATOR/HACK_ACCURATE_SAVE").partial("Non disponibile in questa versione");
 Hack& copyHack = H("CREATOR/HACK_COPY_HACK");
 Hack& customObjBypass = H("CREATOR/HACK_CUSTOM_OBJECT_BYPASS").partial("Non disponibile in questa versione");
-Hack& defaultSongBypass = H("CREATOR/HACK_DEFAULT_SONG_BYPASS").partial("Non disponibile in questa versione");
 Hack& editorExtension = H("CREATOR/HACK_EDITOR_EXTENSION");
 Hack& freeScroll = H("CREATOR/HACK_FREE_SCROLL");
 Hack& hideUI = H("CREATOR/HACK_HIDE_UI").toggled([](bool on) {
@@ -20,9 +19,7 @@ Hack& levelEdit = H("CREATOR/HACK_LEVEL_EDIT");
 Hack& noCMark = H("CREATOR/HACK_NO_C_MARK");
 Hack& noPlaytestZoom = H("CREATOR/HACK_NO_PLAYTEST_ZOOM");
 Hack& objectTrajectory = H("CREATOR/HACK_OBJECT_TRAJECTORY").partial("Non disponibile in questa versione");
-Hack& placeOver = H("CREATOR/HACK_PLACE_OVER").partial("Non disponibile in questa versione");
 Hack& smoothTrail = H("CREATOR/HACK_SMOOTH_EDITOR_TRAIL").partial("Non disponibile in questa versione");
-Hack& toolboxBypass = H("CREATOR/HACK_TOOLBOX_BUTTON_BYPASS").partial("Non disponibile in questa versione");
 Hack& triggerValueBypass = H("CREATOR/HACK_TRIGGER_VALUE_BYPASS").partial("Non disponibile in questa versione");
 Hack& verifyHack = H("CREATOR/HACK_VERIFY_HACK");
 float s_trailOpacity = 50.f;

@@ -771,6 +771,9 @@ def main():
             seen.add(mname)
             out.append(f"    inline constexpr uintptr_t {mname} = {hex(moff)}; // {mtype}")
         out.append("}")
+    if not bad_set:
+        # senza size-check non ci sono classi scartate: off_unchecked punta agli stessi offset
+        out.append("using namespace off;")
     out.append("} // namespace off_unchecked")
     out.append("")
     out.append("} // namespace")

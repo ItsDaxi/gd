@@ -12,7 +12,6 @@ Hack& challenge = hack("BYPASS", "BYPASS/HACK_CHALLENGE").partial("Sblocca trami
 Hack& keymaster = hack("BYPASS", "BYPASS/HACK_KEYMASTER").partial("Sblocca tramite le variabili di gioco (UGV) e le statistiche");
 Hack& mainLevels = hack("BYPASS", "BYPASS/HACK_MAIN_LEVELS");
 Hack& musicUnlocker = hack("BYPASS", "BYPASS/HACK_MUSIC_UNLOCKER");
-Hack& sliderLimit = hack("BYPASS", "BYPASS/HACK_SLIDER_LIMIT").partial("Non disponibile: il limite e' applicato dentro SliderTouchLogic");
 Hack& textLength = hack("BYPASS", "BYPASS/HACK_TEXT_LENGTH");
 Hack& treasureRoom = hack("BYPASS", "BYPASS/HACK_TREASURE_ROOM").partial("Sblocca tramite le variabili di gioco (UGV) e le statistiche");
 Hack& unlockIcons = hack("BYPASS", "BYPASS/HACK_UNLOCK_ICONS");

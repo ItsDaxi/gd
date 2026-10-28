@@ -12,15 +12,12 @@ Hack& H(const char* id) { return hack("UNIVERSAL", id); }
 float s_bgColor[4] = {0.25f, 0.1f, 0.45f, 1.f};
 Hack& customBg = H("UNIVERSAL/CUSTOM_BG/HACK_CUSTOM_BG").optColor("NX/COLOUR", s_bgColor)
     .partial("Colora lo sfondo dei menu (sprite di sfondo della scena)");
-Hack& allowLowVolume = H("UNIVERSAL/HACK_ALLOW_LOW_VOLUME").partial("Non disponibile: lo snap a 0% e' interno a OptionsLayer");
 Hack& compactLists = H("UNIVERSAL/HACK_COMPACT_LISTS").partial("Non disponibile in questa versione");
 Hack& fastChests = H("UNIVERSAL/HACK_FAST_CHESTS");
-Hack& loadAudioMem = H("UNIVERSAL/HACK_LOAD_AUDIO_TO_MEMORY").partial("Non disponibile in questa versione");
 Hack& lockCursor = H("UNIVERSAL/HACK_LOCK_CURSOR");
 Hack& mainMenuPlay = H("UNIVERSAL/HACK_MAIN_MENU_PLAY");
 Hack& noMusicFade = H("UNIVERSAL/HACK_NO_AUDIO_FADE_OUT");
 Hack& noTransition = H("UNIVERSAL/HACK_NO_TRANSITION");
-Hack& transparentLists = H("UNIVERSAL/HACK_TRANSPARENT_LISTS").partial("Non disponibile in questa versione");
 
 float s_semitones = 0.f;
 Hack& pitchShifter = H("UNIVERSAL/PITCH_SHIFTER/HACK_PITCH_SHIFTER")

@@ -852,24 +852,13 @@ namespace {
 Hack& autoSongDownload = hack("LEVEL", "LEVEL/HACK_AUTO_SONG_DOWNLOAD");
 Hack& autoStartPos = hack("LEVEL", "LEVEL/HACK_AUTO_START_POS")
     .partial("Non disponibile: richiede la creazione di StartPos a runtime");
-Hack& shipcopter = hack("LEVEL", "LEVEL/HACK_SHIPCOPTER")
-    .partial("Non disponibile: richiede modifiche alla fisica interne a PlayerObject");
 Hack& showTrajectory = hack("LEVEL", "LEVEL/SHOW_TRAJECTORY/HACK_SHOW_TRAJECTORY")
     .partial("Non disponibile: richiede la simulazione della fisica di GD");
-Hack& smartStartPos = hack("LEVEL", "LEVEL/SMART_STARTPOS/HACK_SMART_STARTPOS")
-    .partial("Non disponibile in questa versione");
 int s_trajIter = 312;
 float s_trajThick = 1.f;
-bool s_ssLegacy = false, s_ssGm = true, s_ssSpeed = true, s_ssSize = true, s_ssMirror = true;
 [[maybe_unused]] bool s_trajInit = (showTrajectory
     .optInt("LEVEL/SHOW_TRAJECTORY/DROPDOWN/ITERATIONS", &s_trajIter, 1, 5000)
     .optFloat("LEVEL/SHOW_TRAJECTORY/DROPDOWN/THICKNESS", &s_trajThick, 0.1f, 5.f, "%.2fx"), true);
-[[maybe_unused]] bool s_ssInit = (smartStartPos
-    .optBool("LEVEL/SMART_STARTPOS/DROPDOWN/LEGACY_CALCULATION", &s_ssLegacy)
-    .optBool("LEVEL/SMART_STARTPOS/DROPDOWN/GAMEMODE_PORTALS", &s_ssGm)
-    .optBool("LEVEL/SMART_STARTPOS/DROPDOWN/SPEED_PORTALS", &s_ssSpeed)
-    .optBool("LEVEL/SMART_STARTPOS/DROPDOWN/SIZE_PORTALS", &s_ssSize)
-    .optBool("LEVEL/SMART_STARTPOS/DROPDOWN/MIRROR_PORTALS", &s_ssMirror), true);
 } // namespace
 
 // Auto Song Download: preme "Download" nella pagina del livello

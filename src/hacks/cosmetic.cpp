@@ -19,12 +19,10 @@ Hack& accuratePct = H("COSMETIC/ACCURATE_PERCENTAGE/HACK_ACCURATE_PERCENTAGE")
 
 Hack& ballRotationBug = H("COSMETIC/HACK_BALL_ROTATION_BUG").partial("Non disponibile in questa versione");
 Hack& noCircles = H("COSMETIC/HACK_NO_CIRCLES");
-Hack& classicParticles = H("COSMETIC/HACK_CLASSIC_PARTICLES").partial("Non disponibile in questa versione");
 Hack& classicPulse = H("COSMETIC/HACK_CLASSIC_PULSE").partial("Non disponibile in questa versione");
 Hack& classicWaveTrail = H("COSMETIC/HACK_CLASSIC_WAVE_TRAIL").partial("Approssimato: scia dell'onda solida e senza pulsazione");
 Hack& coinShower = H("COSMETIC/HACK_COIN_SHOWER");
 Hack& noEndShake = H("COSMETIC/HACK_NO_END_SHAKE");
-Hack& frozenAnims = H("COSMETIC/HACK_FROZEN_ANIMATIONS").partial("Non disponibile in questa versione");
 Hack& hidePauseBtn = H("COSMETIC/HACK_HIDE_PAUSE_BUTTON");
 Hack& hidePauseMenu = H("COSMETIC/HACK_HIDE_PAUSE_MENU");
 Hack& hidePlayer = H("COSMETIC/HACK_HIDE_PLAYER");

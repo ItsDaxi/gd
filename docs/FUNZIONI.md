@@ -4,7 +4,7 @@ Generato da `tools/gen_features.py` leggendo il codice sorgente. Nomi e descrizi
 
 Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠️ parziale / con limitazioni · ❌ non disponibile senza Geode o senza patch del binario · 🔴 = conta come cheat (Safe Mode / Cheat Indicator)
 
-**Totale:** 196 funzioni — ✅ 149 · ⚠️ 23 · ❌ 24
+**Totale:** 198 funzioni — ✅ 160 · ⚠️ 25 · ❌ 13
 
 ## Bypass
 
@@ -15,7 +15,7 @@ Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠�
 | Keymaster |  | ⚠️ | Sblocca tramite le variabili di gioco (UGV) e le statistiche |
 | Main Levels | Livelli Principali | ✅ | Unlocks main demon levels |
 | Music Customiser | Customizer Musica | ✅ | Allows for custom practice and menu music |
-| Slider Limit | Limite Slider | ❌ | Non disponibile: il limite e' applicato dentro SliderTouchLogic |
+| Slider Limit | Limite Slider | ✅ | Let sliders be dragged beyond the visible limit |
 | Text Length | Lunghezza Testo | ✅ | Allows for unlimited text length in text inputs |
 | Treasure Room | Stanza del Tesoro | ⚠️ | Sblocca tramite le variabili di gioco (UGV) e le statistiche |
 | Unlock Icons | Sblocca Icone | ✅ | Unlocks all icons |
@@ -28,11 +28,12 @@ Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠�
 |---|---|---|---|
 | Accurate Percentage | Percentuale Accurata | ✅ | Allows decimal place customisation for the in-game Percentage Decimals setting |
 | Ball Rotation Bug | Bug Rotazione Ball | ❌ | Non disponibile in questa versione |
-| Classic Particles | Particelle Classiche | ❌ | Non disponibile in questa versione |
+| Classic Particles | Particelle Classiche | ⚠️ | Riattiva le particelle 'trailing' di PlayerObject: l'aspetto puo' differire dalla 2.1 |
 | Classic Pulse | Pulsazione Classica | ❌ | Non disponibile in questa versione |
 | Classic Wave Trail | Wave Trail Classico | ⚠️ | Approssimato: scia dell'onda solida e senza pulsazione |
 | Coin Shower | Pioggia di monete | ✅ | AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA |
-| Frozen Animations | Animazioni congelate | ❌ | Non disponibile in questa versione |
+| Custom Wave Trail |  | ✅ |  |
+| Frozen Animations | Animazioni congelate | ✅ | Disables sprite animations like the Robot and Spider |
 | Hide Pause Button | Nascondi Pulsante Pausa | ✅ | Hides the pause button when the in-game cursor is enabled |
 | Hide Pause Menu | Nascondi Menu Pausa | ✅ | Hides the pause menu, helpful for taking screenshots of levels |
 | Hide Player | Nascondi Giocatore | ✅ | Hides the player |
@@ -82,7 +83,7 @@ Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠�
 | Accurate Save | Salvataggio Accurato | ❌ | Non disponibile in questa versione |
 | Copy Hack | Hack Copia | ✅ | Lets you copy any level, without a password |
 | Custom Object Bypass | Bypass Oggetti Personalizzati | ❌ | Non disponibile in questa versione |
-| Default Song Bypass | Bypass Canzone Predefinita | ❌ | Non disponibile in questa versione |
+| Default Song Bypass | Bypass Canzone Predefinita | ✅ | Lets you use hidden default songs in the editor |
 | Editor Extension | Estensione Editor | ✅ | Increases the editor length by a factor of 128 |
 | Free Scroll | Scorrimento Libero | ✅ | Allows scrolling out of the editor |
 | Hide UI | Nascondi UI | ✅ | Hides the editor UI while building |
@@ -91,9 +92,9 @@ Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠�
 | No C Mark | Nessun Marchio C | ✅ | Removes the (C) mark when uploading copied levels |
 | No Playtest Zoom |  | ✅ | Stops the editor layer zooming in when playtesting, zoom triggers will also be disabled |
 | Object Trajectory |  | ❌ | Non disponibile in questa versione |
-| Place Over | Posizionamento Sovrapposto | ❌ | Non disponibile in questa versione |
+| Place Over | Posizionamento Sovrapposto | ✅ | Lets you place the same object over itself in the editor |
 | Smooth Editor Trail | Scia Editor Fluida | ❌ | Non disponibile in questa versione |
-| Toolbox Button Bypass | Bypass Pulsante Strumenti | ❌ | Non disponibile in questa versione |
+| Toolbox Button Bypass | Bypass Pulsante Strumenti | ✅ | Allows for more objects in the editor toolbox |
 | Trigger Value Bypass | Bypass Valore Trigger | ❌ | Non disponibile in questa versione |
 | Verify Hack | Hack Verifica | ✅ | Lets you upload unverified levels |
 
@@ -142,33 +143,34 @@ Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠�
 | Random Seed 🔴 | Seed Casuale | ⚠️ | Imposta il seed del generatore C (rand) ad ogni tentativo; i trigger che usano il generatore interno di GD potrebbero non essere influenzati |
 | Replay Last Checkpoint | Ripeti Ultimo Checkpoint | ✅ | Respawn from your last practice mode checkpoint after completing a level |
 | Respawn Time | Tempo di Respawn | ✅ | Changes player respawn time |
-| Shipcopter | ShipCopter | ❌ | Non disponibile: richiede modifiche alla fisica interne a PlayerObject |
+| Shipcopter 🔴 | ShipCopter | ✅ | Adds Ship controls to the Swing mode, keeps Swing physics. Made by Beat |
 | Show Hitboxes 🔴 | Mostra Hitbox | ⚠️ | Usa il disegno delle hitbox integrato in GD 2.2; le opzioni di stile dipendono dal gioco |
 | Show Hitboxes on Death | Mostra Hitbox Morte | ✅ | Visualises level hitboxes, only on death |
 | Show Hitboxes Trail 🔴 | Mostra Traccia Hitbox | ✅ | Shows a trail of where your player's hitbox went during an attempt, Show Hitboxes required |
 | Show Layout | Mostra Layout | ✅ | Removes all decoration and colour from levels |
 | Show Trajectory | Mostra Traiettoria | ❌ | Non disponibile: richiede la simulazione della fisica di GD |
 | Show Triggers | Mostra Trigger | ✅ | Shows triggers in level |
-| Smart StartPos | StartPos Intelligente | ❌ | Non disponibile in questa versione |
+| Smart StartPos | StartPos Intelligente | ⚠️ | Gli offset di LevelSettingsObject non sono validati dai size-check: verificare in gioco |
 | StartPos Switcher | Switcher StartPos | ✅ | Lets you switch between multiple start positions in-level |
 
 ## Universal
 
 | Funzione | Italiano | Stato | Note |
 |---|---|---|---|
-| Allow Low Volume | Consenti Volume Basso | ❌ | Non disponibile: lo snap a 0% e' interno a OptionsLayer |
+| Allow Low Volume | Consenti Volume Basso | ✅ | Removes snapping to 0% when setting volume to 3% or below |
 | Compact Lists | Liste Compatte | ❌ | Non disponibile in questa versione |
 | Custom Background | Sfondo Custom | ⚠️ | Colora lo sfondo dei menu (sprite di sfondo della scena) |
 | Fast Chests | Casse Veloci | ✅ | Speeds up the chest animation |
-| Load Audio to Memory | Carica Audio alla Memoria | ❌ | Non disponibile in questa versione |
+| Load Audio to Memory | Carica Audio alla Memoria | ✅ | Loads audio into memory instead of streaming it from your HDD/SSD, can improve performance while slightly increasing load times |
 | Lock Cursor | Blocca Cursore | ✅ | Locks Cursor to window while playing/editing |
 | Main Menu Play | Gioca dal Menu Principale | ✅ | Take control of gameplay in the main menu |
+| No Menu Animations |  | ✅ |  |
 | No Music Fade Out | No Fade Out Audio | ✅ | Stops songs fading out. Made by Beat |
 | No Transition | Nessuna Transizione | ✅ | Shortens scene transition time to 0s |
 | Pitch Shifter | Cambia Tono | ✅ | Shifts the pitch of background music |
 | Thread Priority | Priorità Thread | ✅ | Affects how much CPU time GD gets, can improve performance |
 | Transition Customiser | Personalizza Transizioni | ✅ | Customise the type and duration of scene transitions |
-| Transparent Lists | Liste Trasparenti | ❌ | Non disponibile in questa versione |
+| Transparent Lists | Liste Trasparenti | ✅ | Removes the background from list views |
 
 ## Status
 
