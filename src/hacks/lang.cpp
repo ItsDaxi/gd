@@ -93,6 +93,12 @@ const std::string& tr(const std::string& key) {
     if (auto s = lookup(key)) return *s;
     auto it = g_pretty.find(key);
     if (it != g_pretty.end()) return it->second;
+    // testo normale (non una chiave): restituito cosi' com'e'
+    bool isKey = key.find('/') != std::string::npos;
+    if (!isKey) {
+        for (char ch : key)
+            if (ch >= 'a' && ch <= 'z') return g_pretty.emplace(key, key).first->second;
+    }
     // "LEVEL/HACK_NO_SPIKES" -> "No Spikes"
     std::string last = key.substr(key.find_last_of('/') + 1);
     if (last.rfind("HACK_", 0) == 0) last = last.substr(5);

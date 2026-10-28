@@ -19,10 +19,10 @@ struct Channel {
     float speed = 1.f;
 };
 
-enum { Col1, Col2, Glow, Trail, ShipTrail, ChannelCount };
+enum { Col1, Col2, Glow, Trail, ShipTrail, WaveTrail, ChannelCount };
 struct PlayerFx {
     Channel ch[ChannelCount] = {{"ICONIC/PREVIEW/COL1"}, {"ICONIC/PREVIEW/COL2"}, {"ICONIC/PREVIEW/GLOW"},
-                                {"ICONIC/PREVIEW/TRAIL"}, {"ICONIC/PREVIEW/SHIP_FIRE"}};
+                                {"ICONIC/PREVIEW/TRAIL"}, {"ICONIC/PREVIEW/SHIP_FIRE"}, {"ICONIC/PREVIEW/WAVE_TRAIL"}};
 };
 PlayerFx s_fx[2];
 int s_selected = 0;
@@ -66,6 +66,7 @@ void apply(void* player, const PlayerFx& fx, float phase) {
             break;
         case Trail: cc::setColor(GDF(player, PlayerObject, m_regularTrail, void*), col); break;
         case ShipTrail: cc::setColor(GDF(player, PlayerObject, m_shipStreak, void*), col); break;
+        case WaveTrail: cc::setColor(GDF(player, PlayerObject, m_waveTrail, void*), col); break;
         }
     }
 }

@@ -94,3 +94,10 @@ CameraTriggerGameObject
 DashRingObject
 TeleportPortalObject
 GJValueTween
+CCAnimatedSprite
+CCPartAnimSprite
+SpriteAnimationManager
+SongSelectNode
+CustomSongLayer
+GJListLayer
+TableViewCell

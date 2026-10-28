@@ -43,6 +43,20 @@ namespace ButtonSprite {
     inline constexpr uintptr_t updateBGImage = 0x42fc0; // void updateBGImage(char const* filename)
     inline constexpr uintptr_t updateSpriteBGSize = 0x430e0; // void updateSpriteBGSize()
 }
+namespace CCAnimatedSprite {
+    inline constexpr uintptr_t ctor = 0x43950; //  CCAnimatedSprite()
+    inline constexpr uintptr_t dtor_CCAnimatedSprite = 0x44cc0; //  ~CCAnimatedSprite()
+    inline constexpr uintptr_t setOpacity = 0x44bf0; // virtual void setOpacity(unsigned char opacity)
+    inline constexpr uintptr_t setColor = 0x44c50; // virtual void setColor(cocos2d::ccColor3B const& color)
+    inline constexpr uintptr_t animationFinished = 0x44bd0; // virtual void animationFinished(char const* key)
+    inline constexpr uintptr_t animationFinishedO = 0x44b90; // virtual void animationFinishedO(cocos2d::CCObject* str)
+    inline constexpr uintptr_t initWithType = 0x43a60; // bool initWithType(char const* definition, cocos2d::CCTexture2D* texture, bool useTexture)
+    inline constexpr uintptr_t loadType = 0x43cd0; // void loadType(char const* definition, cocos2d::CCTexture2D* texture, bool useTexture)
+    inline constexpr uintptr_t runAnimation = 0x447e0; // void runAnimation(std::string animation)
+    inline constexpr uintptr_t switchToMode = 0x44670; // void switchToMode(spriteMode mode)
+    inline constexpr uintptr_t tweenToAnimation = 0x44850; // void tweenToAnimation(std::string animation, float duration)
+    inline constexpr uintptr_t tweenToAnimationFinished = 0x44b40; // void tweenToAnimationFinished()
+}
 namespace CCCircleWave {
     inline constexpr uintptr_t dtor_CCCircleWave = 0x46470; // virtual ~CCCircleWave()
     inline constexpr uintptr_t create = 0x464d0; // static CCCircleWave* create(float startRadius, float endRadius, float duration, bool fadeIn, bool easeOut)
@@ -78,6 +92,19 @@ namespace CCMenuItemToggler {
     inline constexpr uintptr_t selectedTouch = 0x49300; // void selectedTouch(cocos2d::CCObject* sender)
     inline constexpr uintptr_t setSizeMult = 0x491a0; // void setSizeMult(float mult)
     inline constexpr uintptr_t toggle = 0x49320; // void toggle(bool on)
+}
+namespace CCPartAnimSprite {
+    inline constexpr uintptr_t setScaleX = 0x4a460; // virtual void setScaleX(float scaleX)
+    inline constexpr uintptr_t setScaleY = 0x4a480; // virtual void setScaleY(float scaleY)
+    inline constexpr uintptr_t setScale = 0x4a440; // virtual void setScale(float scale)
+    inline constexpr uintptr_t setOpacity = 0x4a640; // virtual void setOpacity(unsigned char opacity)
+    inline constexpr uintptr_t setBlendFunc = 0x4a4a0; // virtual void setBlendFunc(cocos2d::ccBlendFunc blendFunc)
+    inline constexpr uintptr_t setDisplayFrame = 0x49e50; // virtual void setDisplayFrame(cocos2d::CCSpriteFrame* frame)
+    inline constexpr uintptr_t isFrameDisplayed = 0x4a0c0; // virtual bool isFrameDisplayed(cocos2d::CCSpriteFrame* frame)
+    inline constexpr uintptr_t displayFrame = 0x4a0e0; // virtual cocos2d::CCSpriteFrame* displayFrame()
+    inline constexpr uintptr_t initWithAnimDesc = 0x49670; // bool initWithAnimDesc(char const* definition, cocos2d::CCTexture2D* texture, bool useTexture)
+    inline constexpr uintptr_t setColor = 0x4a570; // void setColor(cocos2d::ccColor3B color)
+    inline constexpr uintptr_t tweenToFrame = 0x4a0f0; // void tweenToFrame(cocos2d::CCSpriteFrame* frame, float duration)
 }
 namespace CCTextInputNode {
     inline constexpr uintptr_t create = 0x54260; // static CCTextInputNode* create(float width, float height, char const* placeholder, char const* textFont, int fontSize, char const* labelFont)
@@ -138,6 +165,25 @@ namespace CustomListView {
     inline constexpr uintptr_t getListCell = 0x144a40; // virtual TableViewCell* getListCell(char const* identifier)
     inline constexpr uintptr_t loadCell = 0x145a40; // virtual void loadCell(TableViewCell* cell, int index)
     inline constexpr uintptr_t reloadAll = 0x146ac0; // void reloadAll()
+}
+namespace CustomSongLayer {
+    inline constexpr uintptr_t dtor_CustomSongLayer = 0x163a30; // virtual ~CustomSongLayer()
+    inline constexpr uintptr_t keyBackClicked = 0x165580; // virtual void keyBackClicked()
+    inline constexpr uintptr_t show = 0x165590; // virtual void show()
+    inline constexpr uintptr_t textChanged = 0x164f00; // virtual void textChanged(CCTextInputNode* node)
+    inline constexpr uintptr_t textInputOpened = 0x164e40; // virtual void textInputOpened(CCTextInputNode* node)
+    inline constexpr uintptr_t textInputClosed = 0x164e40; // virtual void textInputClosed(CCTextInputNode* node)
+    inline constexpr uintptr_t dropDownLayerWillClose = 0x1652f0; // virtual void dropDownLayerWillClose(GJDropDownLayer* layer)
+    inline constexpr uintptr_t musicBrowserClosed = 0x1653d0; // virtual void musicBrowserClosed(MusicBrowser* browser)
+    inline constexpr uintptr_t init = 0x163ca0; // bool init(CustomSongDelegate* delegate)
+    inline constexpr uintptr_t onClose = 0x1654b0; // void onClose(cocos2d::CCObject* sender)
+    inline constexpr uintptr_t onCreateLines = 0x165200; // void onCreateLines(cocos2d::CCObject* sender)
+    inline constexpr uintptr_t onMusicBrowser = 0x164f90; // void onMusicBrowser(cocos2d::CCObject* sender)
+    inline constexpr uintptr_t onNCSBrowser = 0x164ff0; // void onNCSBrowser(cocos2d::CCObject* sender)
+    inline constexpr uintptr_t onNewgroundsBrowser = 0x165100; // void onNewgroundsBrowser(cocos2d::CCObject* sender)
+    inline constexpr uintptr_t onOptions = 0x164940; // void onOptions(cocos2d::CCObject* sender)
+    inline constexpr uintptr_t onSearch = 0x164a50; // void onSearch(cocos2d::CCObject* sender)
+    inline constexpr uintptr_t onSongBrowser = 0x164f10; // void onSongBrowser(cocos2d::CCObject* sender)
 }
 namespace CustomSongWidget {
     inline constexpr uintptr_t create = 0x169060; // static CustomSongWidget* create(SongInfoObject*, CustomSongDelegate*, bool, bool, bool, bool, bool, bool, int, bool, bool)
@@ -2846,11 +2892,46 @@ namespace SongInfoObject {
     inline constexpr uintptr_t setSongLinks = 0x4967c0; // void setSongLinks(std::string const& links)
     inline constexpr uintptr_t updateArtists = 0x496120; // void updateArtists(std::string artists)
 }
+namespace SongSelectNode {
+    inline constexpr uintptr_t dtor_SongSelectNode = 0x163bf0; // virtual ~SongSelectNode()
+    inline constexpr uintptr_t create = 0x167c40; // static SongSelectNode* create(int id, bool customSong, LevelSettingsObject* settings, SongSelectType selectType, cocos2d::CCPoint position, cocos2d::CCNode* parent, cocos2d::CCMenu* menu, bool noLabel)
+    inline constexpr uintptr_t FLAlert_Clicked = 0x168d60; // virtual void FLAlert_Clicked(FLAlertLayer* layer, bool btn2)
+    inline constexpr uintptr_t customSongLayerClosed = 0x168df0; // virtual void customSongLayerClosed()
+    inline constexpr uintptr_t songIDChanged = 0x168e20; // virtual void songIDChanged(int id)
+    inline constexpr uintptr_t getActiveSongID = 0x168e30; // virtual int getActiveSongID()
+    inline constexpr uintptr_t getSongFileName = 0x168e40; // virtual std::string getSongFileName()
+    inline constexpr uintptr_t getLevelSettings = 0x168f30; // virtual LevelSettingsObject* getLevelSettings()
+    inline constexpr uintptr_t audioNext = 0x1687e0; // void audioNext(cocos2d::CCObject* sender)
+    inline constexpr uintptr_t audioPrevious = 0x168820; // void audioPrevious(cocos2d::CCObject* sender)
+    inline constexpr uintptr_t init = 0x167d80; // bool init(int id, bool customSong, LevelSettingsObject* settings, SongSelectType selectType, cocos2d::CCPoint position, cocos2d::CCNode* parent, cocos2d::CCMenu* menu, bool noLabel)
+    inline constexpr uintptr_t onOpenCustomSong = 0x168b30; // void onOpenCustomSong(cocos2d::CCObject* sender)
+    inline constexpr uintptr_t onSongMode = 0x168850; // void onSongMode(cocos2d::CCObject* sender)
+    inline constexpr uintptr_t onSongMode_1 = 0x168880; // void onSongMode(int songMode)
+    inline constexpr uintptr_t showCustomSongSelect = 0x168c00; // void showCustomSongSelect()
+    inline constexpr uintptr_t updateAudioLabel = 0x1686f0; // void updateAudioLabel()
+    inline constexpr uintptr_t updateWidgetVisibility = 0x168aa0; // void updateWidgetVisibility()
+}
+namespace SpriteAnimationManager {
+    inline constexpr uintptr_t createAnimations = 0x85e90; // static void createAnimations(std::string definition)
+    inline constexpr uintptr_t animationFinished = 0x875b0; // void animationFinished()
+    inline constexpr uintptr_t callAnimationFinished = 0x87600; // void callAnimationFinished()
+    inline constexpr uintptr_t executeAnimation = 0x86ee0; // void executeAnimation(std::string animation)
+    inline constexpr uintptr_t getPrio = 0x87700; // int getPrio(std::string animation)
+    inline constexpr uintptr_t initWithOwner = 0x85150; // bool initWithOwner(CCAnimatedSprite* sprite, std::string definition)
+    inline constexpr uintptr_t loadAnimations = 0x853e0; // void loadAnimations(std::string definition)
+    inline constexpr uintptr_t overridePrio = 0x87400; // void overridePrio()
+    inline constexpr uintptr_t queueAnimation = 0x874d0; // void queueAnimation(std::string animation)
+    inline constexpr uintptr_t runAnimation = 0x86d80; // void runAnimation(std::string animation)
+    inline constexpr uintptr_t storeAnimation = 0x86ac0; // void storeAnimation(cocos2d::CCAnimate* action, cocos2d::CCAnimate* frames, std::string name, int priority, spriteMode type, cocos2d::CCSpriteFrame* first)
+}
 namespace StartPosObject {
     inline constexpr uintptr_t init = 0x653340; // virtual bool init()
     inline constexpr uintptr_t customObjectSetup = 0x6534f0; // virtual void customObjectSetup(std::vector<std::string>& values, std::vector<void*>& exists)
     inline constexpr uintptr_t getSaveString = 0x653500; // virtual std::string getSaveString(GJBaseGameLayer* layer)
     inline constexpr uintptr_t loadSettingsFromString = 0x653450; // void loadSettingsFromString(std::string objectString)
+}
+namespace TableViewCell {
+    inline constexpr uintptr_t dtor_TableViewCell = 0x89d10; //  ~TableViewCell()
 }
 namespace TeleportPortalObject {
     inline constexpr uintptr_t dtor_TeleportPortalObject = 0x637f40; // virtual ~TeleportPortalObject()
@@ -2939,6 +3020,18 @@ namespace ButtonSprite { // sizeof = 0x2c8 (validato)
     inline constexpr uintptr_t m_spritePosition = 0x2a0; // cocos2d::CCPoint
     inline constexpr uintptr_t m_caption = 0x2a8; // std::string
 }
+namespace CCAnimatedSprite { // sizeof = 0x2e8 (validato)
+    inline constexpr uintptr_t _size = 0x2e8;
+    inline constexpr uintptr_t m_unkString1 = 0x258; // std::string
+    inline constexpr uintptr_t m_activeTween = 0x278; // std::string
+    inline constexpr uintptr_t m_animationManager = 0x298; // SpriteAnimationManager*
+    inline constexpr uintptr_t m_sprite = 0x2a0; // cocos2d::CCSprite*
+    inline constexpr uintptr_t m_fbfSprite = 0x2a8; // cocos2d::CCSprite*
+    inline constexpr uintptr_t m_paSprite = 0x2b0; // CCPartAnimSprite*
+    inline constexpr uintptr_t m_spriteMode = 0x2b8; // spriteMode
+    inline constexpr uintptr_t m_currentAnim = 0x2c0; // std::string
+    inline constexpr uintptr_t m_delegate = 0x2e0; // AnimatedSpriteDelegate*
+}
 namespace CCCircleWave { // sizeof = 0x178 (validato)
     inline constexpr uintptr_t _size = 0x178;
     inline constexpr uintptr_t m_target = 0x140; // cocos2d::CCNode*
@@ -2985,6 +3078,14 @@ namespace CCMenuItemToggler { // sizeof = 0x190 (validato)
     inline constexpr uintptr_t m_onButton = 0x180; // CCMenuItemSpriteExtra*
     inline constexpr uintptr_t m_toggled = 0x188; // bool
     inline constexpr uintptr_t m_notClickable = 0x189; // bool
+}
+namespace CCPartAnimSprite { // sizeof = 0x280 (validato)
+    inline constexpr uintptr_t _size = 0x280;
+    inline constexpr uintptr_t m_spritePartIDs = 0x258; // cocos2d::CCDictionary*
+    inline constexpr uintptr_t m_spriteFrame = 0x260; // cocos2d::CCSpriteFrame*
+    inline constexpr uintptr_t m_hasChanged = 0x268; // bool
+    inline constexpr uintptr_t m_unkSize = 0x26c; // cocos2d::CCSize
+    inline constexpr uintptr_t m_spriteParts = 0x278; // cocos2d::CCArray*
 }
 namespace CCTextInputNode { // sizeof = 0x2d8 (validato)
     inline constexpr uintptr_t _size = 0x2d8;
@@ -3090,6 +3191,13 @@ namespace CommentCell { // sizeof = 0x268 (validato)
 namespace CustomListView { // sizeof = 0x1d8 (validato)
     inline constexpr uintptr_t _size = 0x1d8;
     inline constexpr uintptr_t m_cellMode = 0x1d0; // int
+}
+namespace CustomSongLayer { // sizeof = 0x2c8 (validato)
+    inline constexpr uintptr_t _size = 0x2c8;
+    inline constexpr uintptr_t m_songDelegate = 0x2a8; // CustomSongDelegate*
+    inline constexpr uintptr_t m_songIDInput = 0x2b0; // CCTextInputNode*
+    inline constexpr uintptr_t m_songWidget = 0x2b8; // CustomSongWidget*
+    inline constexpr uintptr_t m_delegate = 0x2c0; // CustomSongLayerDelegate*
 }
 namespace CustomSongWidget { // sizeof = 0x278 (validato)
     inline constexpr uintptr_t _size = 0x278;
@@ -6272,9 +6380,51 @@ namespace SongInfoObject { // sizeof = 0x358 (validato)
     inline constexpr uintptr_t m_songNameLower = 0x318; // std::string
     inline constexpr uintptr_t m_artistNameLower = 0x338; // std::string
 }
+namespace SongSelectNode { // sizeof = 0x1b0 (validato)
+    inline constexpr uintptr_t _size = 0x1b0;
+    inline constexpr uintptr_t m_selectedSongID = 0x158; // int
+    inline constexpr uintptr_t m_isCustomSong = 0x15c; // bool
+    inline constexpr uintptr_t m_songChanged = 0x15d; // bool
+    inline constexpr uintptr_t m_audioLabel = 0x160; // cocos2d::CCLabelBMFont*
+    inline constexpr uintptr_t m_selectSongObjects = 0x168; // cocos2d::CCArray*
+    inline constexpr uintptr_t m_normalSongObjects = 0x170; // cocos2d::CCArray*
+    inline constexpr uintptr_t m_changeSongObjects = 0x178; // cocos2d::CCArray*
+    inline constexpr uintptr_t m_normalButton = 0x180; // CCMenuItemSpriteExtra*
+    inline constexpr uintptr_t m_customButton = 0x188; // CCMenuItemSpriteExtra*
+    inline constexpr uintptr_t m_selectButton = 0x190; // CCMenuItemSpriteExtra*
+    inline constexpr uintptr_t m_changeButton = 0x198; // CCMenuItemSpriteExtra*
+    inline constexpr uintptr_t m_songWidget = 0x1a0; // CustomSongWidget*
+    inline constexpr uintptr_t m_settingsObject = 0x1a8; // LevelSettingsObject*
+}
+namespace SpriteAnimationManager { // sizeof = 0x1d8 (validato)
+    inline constexpr uintptr_t _size = 0x1d8;
+    inline constexpr uintptr_t m_sprite = 0x140; // CCAnimatedSprite*
+    inline constexpr uintptr_t m_priorityDict = 0x148; // cocos2d::CCDictionary*
+    inline constexpr uintptr_t m_typeDict = 0x150; // cocos2d::CCDictionary*
+    inline constexpr uintptr_t m_soundDict = 0x158; // cocos2d::CCDictionary*
+    inline constexpr uintptr_t m_queuedAnimation = 0x160; // std::string
+    inline constexpr uintptr_t m_speed = 0x180; // float
+    inline constexpr uintptr_t m_animateDict = 0x188; // cocos2d::CCDictionary*
+    inline constexpr uintptr_t m_frameDict = 0x190; // cocos2d::CCDictionary*
+    inline constexpr uintptr_t m_currentAnimation = 0x198; // std::string
+    inline constexpr uintptr_t m_nextAnimation = 0x1b8; // std::string
+}
 namespace StartPosObject { // sizeof = 0x748 (validato)
     inline constexpr uintptr_t _size = 0x748;
     inline constexpr uintptr_t m_startSettings = 0x740; // LevelSettingsObject*
+}
+namespace TableViewCell { // sizeof = 0x230 (validato)
+    inline constexpr uintptr_t _size = 0x230;
+    inline constexpr uintptr_t m_unknown = 0x198; // void*
+    inline constexpr uintptr_t m_tableView = 0x1a0; // TableView*
+    inline constexpr uintptr_t m_indexPath = 0x1a8; // CCIndexPath
+    inline constexpr uintptr_t m_unknown2 = 0x1e8; // void*
+    inline constexpr uintptr_t m_cellIdentifier = 0x1f0; // std::string
+    inline constexpr uintptr_t m_width = 0x210; // float
+    inline constexpr uintptr_t m_height = 0x214; // float
+    inline constexpr uintptr_t m_backgroundLayer = 0x218; // cocos2d::CCLayerColor*
+    inline constexpr uintptr_t m_mainLayer = 0x220; // cocos2d::CCLayer*
+    inline constexpr uintptr_t m_listType = 0x228; // BoomListType
 }
 namespace TeleportPortalObject { // sizeof = 0x788 (validato)
     inline constexpr uintptr_t _size = 0x788;
