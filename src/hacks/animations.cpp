@@ -14,11 +14,15 @@ Hack& noMenuAnims = hack("UNIVERSAL", "UNIVERSAL/HACK_NO_MENU_ANIMATIONS").name(
 // Popup (FLAlertLayer e derivati): niente "rimbalzo" elastico in apertura
 void (*o_alertShow)(void*);
 void h_alertShow(void* self) {
-    if (noMenuAnims.enabled && s_popups) {
-        GDF(self, FLAlertLayer, m_noElasticity, bool) = true;
-        GDF(self, FLAlertLayer, m_noAction, bool) = true;
-    }
+    bool skip = noMenuAnims.enabled && s_popups;
+    if (skip) GDF(self, FLAlertLayer, m_noElasticity, bool) = true;
     o_alertShow(self);
+    if (!skip) return;
+    // ferma l'animazione di ingresso e porta subito il popup alla dimensione finale
+    if (auto main = GDF(self, FLAlertLayer, m_mainLayer, void*)) {
+        cc::call<void>("?stopAllActions@CCNode@cocos2d@@QEAAXXZ", main);
+        cc::setScale(main, 1.f);
+    }
 }
 
 // Menu a tendina (GJDropDownLayer: lista livelli, opzioni, ecc.): apertura/chiusura istantanea
