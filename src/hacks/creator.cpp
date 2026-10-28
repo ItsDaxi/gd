@@ -8,7 +8,6 @@ namespace {
 
 Hack& H(const char* id) { return hack("CREATOR", id); }
 
-Hack& accurateSave = H("CREATOR/HACK_ACCURATE_SAVE").partial("Non disponibile: la precisione e' nel formato di GameObject::getSaveString (serve una patch del binario)");
 Hack& copyHack = H("CREATOR/HACK_COPY_HACK");
 // Custom Object Bypass: il limite di 50 oggetti custom e' un "cmp reg, 50" dentro EditorUI::onNewCustomItem;
 // lo si trova a runtime e lo si porta a 127 (massimo per un immediato a 8 bit)
@@ -34,8 +33,6 @@ Hack& hideUI = H("CREATOR/HACK_HIDE_UI").toggled([](bool on) {
 Hack& levelEdit = H("CREATOR/HACK_LEVEL_EDIT");
 Hack& noCMark = H("CREATOR/HACK_NO_C_MARK");
 Hack& noPlaytestZoom = H("CREATOR/HACK_NO_PLAYTEST_ZOOM");
-Hack& objectTrajectory = H("CREATOR/HACK_OBJECT_TRAJECTORY").partial("Non disponibile: richiede la simulazione dei trigger move/rotate");
-Hack& smoothTrail = H("CREATOR/HACK_SMOOTH_EDITOR_TRAIL").partial("Non disponibile: LevelEditorLayer::addPlayerPoint e' inline su Windows (nessun indirizzo da agganciare)");
 Hack& triggerValueBypass = H("CREATOR/HACK_TRIGGER_VALUE_BYPASS")
     .partial("Disattiva i limiti dei valori dei trigger (mappa m_shouldLimitValues di SetupTriggerPopup): "
              "i valori fuori scala si inseriscono dal campo di testo");
@@ -77,13 +74,6 @@ void h_updateValue(void* self, int prop, float v) {
     o_updateValue(self, prop, v);
 }
 Hack& verifyHack = H("CREATOR/HACK_VERIFY_HACK");
-float s_trailOpacity = 50.f;
-Hack& multiTrails = H("CREATOR/MULTIPLE_EDITOR_TRAILS/HACK_MULTIPLE_EDITOR_TRAILS")
-    .optFloat("CREATOR/MULTIPLE_EDITOR_TRAILS/DROPDOWN/TRANSPARENCY", &s_trailOpacity, 0, 100, "%.0f%%")
-    .optButton("CREATOR/MULTIPLE_EDITOR_TRAILS/DROPDOWN/CLEAR_ALL", [] {})
-    .optButton("CREATOR/MULTIPLE_EDITOR_TRAILS/DROPDOWN/CLEAR_LASTEST", [] {})
-    .optButton("CREATOR/MULTIPLE_EDITOR_TRAILS/DROPDOWN/CLEAR_OLDEST", [] {})
-    .partial("Non disponibile: LevelEditorLayer::clearPlayerPoints e' inline su Windows (nessun indirizzo da agganciare)");
 
 // SeedValueRS: [random, seed], valore = random - seed
 void setSeedRS(void* p, int v) {

@@ -18,12 +18,16 @@ for f in sorted(glob.glob(str(root / "src/hacks/*.cpp"))):
     if m:
         default_win = m.group(1)
     def until_semicolon(pos):
-        out, q, i = "", False, pos
+        out, q, i, depth = "", False, pos, 0
         while i < len(src):
             c = src[i]
             if c == '"' and src[i - 1] != "\\":
                 q = not q
-            if c == ";" and not q:
+            if not q and c in "({":
+                depth += 1
+            if not q and c in ")}":
+                depth -= 1
+            if c == ";" and not q and depth <= 0:
                 break
             out += c
             i += 1
@@ -37,7 +41,10 @@ for f in sorted(glob.glob(str(root / "src/hacks/*.cpp"))):
         if win and win.startswith("_"):
             continue
         name = re.search(r'\.name\("([^"]+)"\)', rest)
-        partial = re.search(r'\.partial\("((?:[^"\\]|\\.)*)"\)', rest)
+        partial = re.search(r'\.partial\(((?:\s*"(?:[^"\\]|\\.)*")+)\s*\)', rest)
+        if partial:
+            text = "".join(re.findall(r'"((?:[^"\\]|\\.)*)"', partial.group(1)))
+            partial = type("P", (), {"group": lambda self, i, t=text: t})()
         cheat = ".isCheat()" in rest
         rows.append((win, hid, name.group(1) if name else None, partial.group(1) if partial else None, cheat, kind == "action"))
     # campi dello Status

@@ -96,7 +96,6 @@ void applyTps(bool on) {
 }
 Hack& lockDelta = hack("DISPLAY", "DISPLAY/DELTA/HACK_LOCK_DELTA").isCheat();
 Hack& realTime = hack("DISPLAY", "DISPLAY/DELTA/HACK_REAL_TIME").partial("Approssimato: il delta bloccato viene moltiplicato quando il gioco resta indietro");
-Hack& frameExtrapolation = hack("DISPLAY", "DISPLAY/HACK_FRAME_EXTRAPOLATION").partial("Non disponibile: richiede di interpolare la posizione di tutti gli oggetti tra due tick");
 
 LONG_PTR s_oldStyle = 0;
 RECT s_oldRect{};

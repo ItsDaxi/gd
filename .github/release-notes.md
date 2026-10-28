@@ -21,6 +21,11 @@ Per disinstallare cancella i due file. Config, macro, screenshot e log stanno in
 - **Custom Wave Trail** (Cosmetic): colore fisso, arcobaleno o colori del giocatore, spessore, pulse (normale / nessuno / moltiplicatore / fisso), opacità, scia solida; anche per il giocatore 2. Il colore della wave trail è anche negli effetti di Iconic
 - Funzioni prima non disponibili, ora presenti: Frozen Animations, Classic Particles, Classic Pulse, Ball Rotation Bug, Toolbox Button Bypass, Place Over, Default Song Bypass, Trigger Value Bypass, Custom Object Bypass, Slider Limit, Allow Low Volume, Transparent Lists, Compact Lists, Load Audio to Memory, Smart StartPos, Auto StartPos, Shipcopter, **Physics TPS**
 - Physics TPS e Custom Object Bypass sono **sperimentali**: cercano a runtime nel codice di GD le costanti da cambiare (240 tick/s, limite 50). Il log (`megahack/log.txt`) dice quanti punti sono stati trovati
-- Restano non disponibili 6 funzioni (Accurate Save, Object Trajectory, Smooth/Multiple Editor Trails, Show Trajectory, Frame Extrapolation): il motivo è nel tooltip di ognuna
+- Ora ci sono anche le ultime 6 funzioni che mancavano, quindi **nessuna è più non disponibile**:
+  - **Show Trajectory** (Level): percorso del giocatore tenendo premuto (verde) o lasciando (arancione), con il punto di morte; simula la fisica di GD con due giocatori finti nascosti. Sperimentale
+  - **Smooth Editor Trail** e **Multiple Editor Trails** (Creator): la linea verde del playtest aggiornata a ogni frame e le linee dei playtest precedenti, con trasparenza e i tasti Clear All / Latest / Oldest
+  - **Object Trajectory** (Creator): percorso degli oggetti selezionati in base ai trigger move (non i rotate)
+  - **Accurate Save** (Creator): salva X e Y degli oggetti con 4 decimali
+  - **Frame Extrapolation** (Display): sopra i 240 fps sposta giocatori e camera della frazione di tick mancante
 
 Elenco completo delle funzioni e del loro stato: [docs/FUNZIONI.md](https://github.com/ItsDaxi/gd/blob/claude/geometry-dash-mega-hack-mod-cj70zj/docs/FUNZIONI.md)

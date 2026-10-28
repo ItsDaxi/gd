@@ -4,7 +4,7 @@ Generato da `tools/gen_features.py` leggendo il codice sorgente. Nomi e descrizi
 
 Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠️ parziale / con limitazioni · ❌ non disponibile senza Geode o senza patch del binario · 🔴 = conta come cheat (Safe Mode / Cheat Indicator)
 
-**Totale:** 198 funzioni — ✅ 163 · ⚠️ 29 · ❌ 6
+**Totale:** 198 funzioni — ✅ 161 · ⚠️ 37 · ❌ 0
 
 ## Bypass
 
@@ -80,22 +80,22 @@ Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠�
 
 | Funzione | Italiano | Stato | Note |
 |---|---|---|---|
-| Accurate Save | Salvataggio Accurato | ❌ | Non disponibile: la precisione e' nel formato di GameObject::getSaveString (serve una patch del binario) |
+| Accurate Save | Salvataggio Accurato | ✅ | Object positions are more accurately saved |
 | Copy Hack | Hack Copia | ✅ | Lets you copy any level, without a password |
-| Custom Object Bypass | Bypass Oggetti Personalizzati | ✅ | Removes the object limit for custom objects & lets you save over 50 |
+| Custom Object Bypass | Bypass Oggetti Personalizzati | ⚠️ | Sperimentale: porta il limite a 127 oggetti custom (immediato trovato a runtime in EditorUI::onNewCustomItem) |
 | Default Song Bypass | Bypass Canzone Predefinita | ✅ | Lets you use hidden default songs in the editor |
 | Editor Extension | Estensione Editor | ✅ | Increases the editor length by a factor of 128 |
 | Free Scroll | Scorrimento Libero | ✅ | Allows scrolling out of the editor |
 | Hide UI | Nascondi UI | ✅ | Hides the editor UI while building |
 | Level Edit | Modifica Livello | ✅ | Lets you edit any level through the pause menu |
-| Multiple Editor Trails | Multiple Scie nell'editor | ❌ | Non disponibile: LevelEditorLayer::clearPlayerPoints e' inline su Windows (nessun indirizzo da agganciare) |
+| Multiple Editor Trails | Multiple Scie nell'editor | ✅ |  |
 | No C Mark | Nessun Marchio C | ✅ | Removes the (C) mark when uploading copied levels |
 | No Playtest Zoom |  | ✅ | Stops the editor layer zooming in when playtesting, zoom triggers will also be disabled |
-| Object Trajectory |  | ❌ | Non disponibile: richiede la simulazione dei trigger move/rotate |
+| Object Trajectory |  | ⚠️ | Considera i trigger move attivati dalla linea del tempo (non spawn/touch, non 'target' o 'lock to player') con la velocita' iniziale del livello; i trigger rotate non sono simulati |
 | Place Over | Posizionamento Sovrapposto | ✅ | Lets you place the same object over itself in the editor |
-| Smooth Editor Trail | Scia Editor Fluida | ❌ | Non disponibile: LevelEditorLayer::addPlayerPoint e' inline su Windows (nessun indirizzo da agganciare) |
-| Toolbox Button Bypass | Bypass Pulsante Strumenti | ✅ | Allows for more objects in the editor toolbox |
-| Trigger Value Bypass | Bypass Valore Trigger | ✅ | Bypasses trigger control limits |
+| Smooth Editor Trail | Scia Editor Fluida | ✅ | Makes the playtest line in the editor smoother by updating it every frame instead of at 30fps |
+| Toolbox Button Bypass | Bypass Pulsante Strumenti | ⚠️ | Imposta le variabili 0049/0050 di GD: riapri l'editor per vedere il cambiamento |
+| Trigger Value Bypass | Bypass Valore Trigger | ⚠️ | Disattiva i limiti dei valori dei trigger (mappa m_shouldLimitValues di SetupTriggerPopup): i valori fuori scala si inseriscono dal campo di testo |
 | Verify Hack | Hack Verifica | ✅ | Lets you upload unverified levels |
 
 ## Level
@@ -130,10 +130,10 @@ Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠�
 | Freeze Player 🔴 |  | ✅ |  |
 | Hitbox Multiplier 🔴 | Moltiplicatore Hitbox | ⚠️ | Applicato all'avvio del livello (riavvia il livello dopo aver cambiato i valori) |
 | Ignore ESC |  | ✅ |  |
+| Insta Kill |  | ✅ |  |
 | Instant Complete 🔴 | Completamento Istantaneo | ✅ | Teleports the player to the end of a level |
 | Jump Hack 🔴 | Hack Salto | ✅ | Unlimited jump height |
 | Jumpscare | Jumpscare | ✅ | Boo |
-| LEVEL/HACK_INSTA_KILL |  | ✅ |  |
 | No Collision 🔴 | No Collisione | ✅ |  |
 | Noclip 🔴 | Noclip | ✅ | Makes the player invincible. |
 | Noclip Limits | Limiti Noclip | ✅ | Kills the player after certain accuracy thresholds, requires Noclip |
@@ -148,7 +148,7 @@ Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠�
 | Show Hitboxes on Death | Mostra Hitbox Morte | ✅ | Visualises level hitboxes, only on death |
 | Show Hitboxes Trail 🔴 | Mostra Traccia Hitbox | ✅ | Shows a trail of where your player's hitbox went during an attempt, Show Hitboxes required |
 | Show Layout | Mostra Layout | ✅ | Removes all decoration and colour from levels |
-| Show Trajectory | Mostra Traiettoria | ❌ | Non disponibile: richiede la simulazione della fisica di GD |
+| Show Trajectory | Mostra Traiettoria | ⚠️ | Sperimentale: simula il giocatore con le funzioni di fisica di GD (checkCollisions/update). I trigger toccati durante la simulazione non vengono attivati, quindi il percorso puo' divergere dopo trigger, portali di modalita' o teletrasporti |
 | Show Triggers | Mostra Trigger | ✅ | Shows triggers in level |
 | Smart StartPos | StartPos Intelligente | ⚠️ | Gli offset di LevelSettingsObject non sono validati dai size-check: verificare in gioco |
 | StartPos Switcher | Switcher StartPos | ✅ | Lets you switch between multiple start positions in-level |
@@ -207,10 +207,10 @@ Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠�
 | Funzione | Italiano | Stato | Note |
 |---|---|---|---|
 | Borderless Classic | Borderless (classico) | ✅ | Classic implementation of borderless fullscreen (separate to GD's own implementation) |
-| Frame Extrapolation | Estrapolazione frame | ❌ | Non disponibile: richiede di interpolare la posizione di tutti gli oggetti tra due tick |
-| Fullscreen | Schermo intero | ✅ | Allows the game to fill your main display |
+| Frame Extrapolation | Estrapolazione frame | ⚠️ | Estrapola giocatori e camera; gli altri oggetti in movimento restano a 240 Hz |
+| Fullscreen | Schermo intero | ⚠️ | La modalita' esclusiva usa la finestra senza bordi |
 | Lock Delta 🔴 | Lock Delta | ✅ | Locks the frame time (delta) during gameplay for consistency, used mainly for botting |
-| Physics TPS 🔴 | TPS Fisici | ✅ | Unlocks the default 240/s physics limit, setting it to the target FPS/TPS (whichever is highest). This does NOT replicate 2.1 physics |
+| Physics TPS 🔴 | TPS Fisici | ⚠️ | Sperimentale: reindirizza le costanti 240 / 1/240 trovate in GJBaseGameLayer::update e getModifiedDelta. Non replica la fisica della 2.1 |
 | Real Time | Tempo reale | ⚠️ | Approssimato: il delta bloccato viene moltiplicato quando il gioco resta indietro |
 | Unlock FPS | Sblocca FPS | ✅ | Sets the FPS target of the game. Physics will not change unless using physics bypass |
 | Vertical Sync | Vertical Sync | ✅ | Syncs FPS with display Hz, reducing screen tearing |

@@ -343,6 +343,7 @@ namespace {
 Hack& practiceCoins = hack("LEVEL", "LEVEL/HACK_COLLECT_COINS_IN_PRACTICE");
 void (*o_pickupItem)(void*, void*);
 void h_pickupItem(void* self, void* obj) {
+    if (g_simulating) return;
     bool& practice = GDF(self, GJBaseGameLayer, m_isPracticeMode, bool);
     if (practiceCoins.enabled && practice) {
         practice = false;
@@ -853,16 +854,9 @@ static gui::Overlay s_spOverlay([] {
     dl->AddText(f, size, pos, IM_COL32(255, 255, 255, 220), buf);
 });
 
-// ------------------------------------------------------------------ funzioni non replicabili senza la DLL originale
+// ------------------------------------------------------------------ Auto Song Download
 namespace {
 Hack& autoSongDownload = hack("LEVEL", "LEVEL/HACK_AUTO_SONG_DOWNLOAD");
-Hack& showTrajectory = hack("LEVEL", "LEVEL/SHOW_TRAJECTORY/HACK_SHOW_TRAJECTORY")
-    .partial("Non disponibile: richiede la simulazione della fisica di GD");
-int s_trajIter = 312;
-float s_trajThick = 1.f;
-[[maybe_unused]] bool s_trajInit = (showTrajectory
-    .optInt("LEVEL/SHOW_TRAJECTORY/DROPDOWN/ITERATIONS", &s_trajIter, 1, 5000)
-    .optFloat("LEVEL/SHOW_TRAJECTORY/DROPDOWN/THICKNESS", &s_trajThick, 0.1f, 5.f, "%.2fx"), true);
 } // namespace
 
 // Auto Song Download: preme "Download" nella pagina del livello

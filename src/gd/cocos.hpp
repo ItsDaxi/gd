@@ -21,6 +21,7 @@ struct Point {
 };
 struct Size { float width, height; };
 struct Color3B { uint8_t r, g, b; };
+struct Color4F { float r, g, b, a; };
 
 void* resolve(const char* symbol);
 
@@ -75,6 +76,13 @@ int zOrder(void* node);
 void setZOrder(void* node, int z);
 void removeFromParent(void* node);
 int tag(void* node);
+void addChild(void* parent, void* child, int z);
+void* nodeCreate();                 // CCNode::create
+
+// --- CCDrawNode ---
+void* drawNodeCreate();
+void drawNodeClear(void* node);
+void drawSegment(void* node, Point a, Point b, float radius, Color4F color);
 
 // --- CCRGBAProtocol (interfaccia secondaria: serve il sotto-oggetto corretto) ---
 void setOpacity(void* sprite, uint8_t o); // per CCSprite e derivati (GameObject, ecc.)

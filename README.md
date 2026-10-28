@@ -13,6 +13,8 @@ carica da sola con il gioco e disegna il menu con Dear ImGui sopra la finestra d
   (Everything Hurts, Freeze Player, Insta Kill, Ignore ESC, Auto Practice Mode), più **No Menu Animations**
   (popup, menu a tendina e transizioni di GD istantanei) e **Custom Wave Trail** (colore fisso/arcobaleno/colori del
   giocatore, spessore, pulse, opacità, scia solida).
+  Nessuna funzione è "non disponibile": quelle che senza Geode si possono fare solo in parte
+  (es. Show Trajectory, Physics TPS, Frame Extrapolation) sono segnate ⚠️ con il motivo nel tooltip.
   L'elenco completo con lo stato di ognuna è in **[docs/FUNZIONI.md](docs/FUNZIONI.md)**.
 - Testi e traduzioni presi direttamente dai file di Mega-Hack-Translate: inglese e **italiano** inclusi,
   altre lingue caricabili mettendo il loro `.json` in `megahack/langs/`.

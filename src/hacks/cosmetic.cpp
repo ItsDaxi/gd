@@ -286,7 +286,7 @@ void h_lightning(void* self, cc::Point a, cc::Point b, cc::Color3B c, float w, f
 
 void (*o_spawnPortalCircle)(void*, cc::Color3B, float);
 void h_spawnPortalCircle(void* self, cc::Color3B c, float r) {
-    if (noPortalCircle.enabled || noCircles.enabled) return;
+    if (g_simulating || noPortalCircle.enabled || noCircles.enabled) return;
     o_spawnPortalCircle(self, c, r);
 }
 

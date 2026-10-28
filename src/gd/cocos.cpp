@@ -195,6 +195,28 @@ int tag(void* node) {
     return call<int>("?getTag@CCObject@cocos2d@@UEBAHXZ", node);
 }
 
+void addChild(void* parent, void* child, int z) {
+    if (!parent || !child) return;
+    static int idx = nodeIdx("?addChild@CCNode@cocos2d@@UEAAXPEAV12@H@Z");
+    if (idx >= 0) vcall<void>(parent, idx, child, z);
+    else call<void>("?addChild@CCNode@cocos2d@@UEAAXPEAV12@H@Z", parent, child, z);
+}
+
+void* nodeCreate() { return call<void*>("?create@CCNode@cocos2d@@SAPEAV12@XZ"); }
+
+// ---------------------------------------------------------------- CCDrawNode
+void* drawNodeCreate() { return call<void*>("?create@CCDrawNode@cocos2d@@SAPEAV12@XZ"); }
+
+void drawNodeClear(void* node) {
+    if (node) call<void>("?clear@CCDrawNode@cocos2d@@QEAAXXZ", node);
+}
+
+void drawSegment(void* node, Point a, Point b, float radius, Color4F color) {
+    if (!node) return;
+    call<bool>("?drawSegment@CCDrawNode@cocos2d@@QEAA_NAEBVCCPoint@2@0MAEBU_ccColor4F@2@@Z", node,
+               static_cast<const Point*>(&a), static_cast<const Point*>(&b), radius, static_cast<const Color4F*>(&color));
+}
+
 // Offset del sotto-oggetto CCRGBAProtocol dentro CCSprite (= sizeof(CCNode), verificato dai size-check)
 static constexpr size_t kSpriteRGBAOffset = 0x140;
 

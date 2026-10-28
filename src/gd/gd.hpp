@@ -96,6 +96,11 @@ int levelID(void* lvl);
 std::string levelName(void* lvl);
 int levelNormalPercent(void* lvl);
 
+// std::string con il layout MSVC usato da GD. La memoria di GD va presa dall'heap del CRT
+// dinamico (ucrtbase), non da quello statico di questa DLL.
+std::string readStdString(const void* str);
+bool writeStdString(void* str, const std::string& value);
+
 // SeedValueRSV (valore offuscato di Geode: 3 int, il valore reale e' uno dei tre)
 int seedValue(const void* p);
 void setSeedValue(void* p, int v);

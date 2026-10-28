@@ -21,6 +21,11 @@ void* g_editorLayerForKeys() { return gd::editorLayer(); }
 
 using namespace mh;
 
+namespace mh {
+bool g_simulating = false;
+bool g_simDied = false;
+} // namespace mh
+
 namespace {
 
 // ============================================================== PlayLayer
@@ -54,6 +59,10 @@ void h_plResetLevel(void* self) {
 
 void (*o_plDestroyPlayer)(void*, void*, void*);
 void h_plDestroyPlayer(void* self, void* player, void* obj) {
+    if (g_simulating) {
+        g_simDied = true;
+        return;
+    }
     // lo spike anti-cheat di GD deve sempre poter "uccidere" il giocatore
     void* anticheat = GDF(self, GJBaseGameLayer, m_anticheatSpike, void*);
     if (obj && obj == anticheat) {
@@ -72,6 +81,7 @@ void h_plDestroyPlayer(void* self, void* player, void* obj) {
 
 void (*o_plLevelComplete)(void*);
 void h_plLevelComplete(void* self) {
+    if (g_simulating) return;
     bool allow = true;
     ev::plPreComplete()(self, allow);
     if (!allow) return;
@@ -126,12 +136,14 @@ void h_plUpdateAttempts(void* self) {
 
 void (*o_plStoreCheckpoint)(void*, void*);
 void h_plStoreCheckpoint(void* self, void* cp) {
+    if (g_simulating) return;
     o_plStoreCheckpoint(self, cp);
     ev::plCheckpoint()(self, cp);
 }
 
 void (*o_plEndAnim)(void*, cc::Point);
 void h_plEndAnim(void* self, cc::Point pos) {
+    if (g_simulating) return;
     bool allow = true;
     ev::plLevelEndAnim()(self, allow);
     if (allow) o_plEndAnim(self, pos);
@@ -163,7 +175,7 @@ struct RawVector {
 
 void (*o_bglCollisionCheck)(void*, void*, void*, int, float);
 void h_bglCollisionCheck(void* self, void* player, void* vec, int count, float dt) {
-    if (ev::bglCollisionPre().empty() || !vec) {
+    if (g_simulating || ev::bglCollisionPre().empty() || !vec) {
         o_bglCollisionCheck(self, player, vec, count, dt);
         return;
     }
@@ -181,6 +193,7 @@ void h_bglCollisionCheck(void* self, void* player, void* vec, int count, float d
 
 void (*o_bglShake)(void*, float, float, float);
 void h_bglShake(void* self, float a, float b, float c) {
+    if (g_simulating) return;
     bool allow = true;
     ev::bglShake()(self, allow);
     if (allow) o_bglShake(self, a, b, c);
@@ -188,6 +201,7 @@ void h_bglShake(void* self, float a, float b, float c) {
 
 void (*o_bglUpdateZoom)(void*, float, float, int, float, int, int);
 void h_bglUpdateZoom(void* self, float zoom, float dur, int easing, float rate, int uid, int cid) {
+    if (g_simulating) return;
     bool allow = true;
     ev::bglZoom()(self, zoom, allow);
     if (allow) o_bglUpdateZoom(self, zoom, dur, easing, rate, uid, cid);
@@ -195,6 +209,7 @@ void h_bglUpdateZoom(void* self, float zoom, float dur, int easing, float rate, 
 
 void (*o_bglToggleFlipped)(void*, bool, bool);
 void h_bglToggleFlipped(void* self, bool flip, bool noEffects) {
+    if (g_simulating) return;
     bool allow = true;
     ev::bglFlip()(self, flip, allow);
     if (allow) o_bglToggleFlipped(self, flip, noEffects);
@@ -216,6 +231,7 @@ void h_bglUpdateCamera(void* self, float dt) {
 
 void (*o_bglToggleGroup)(void*, int, bool);
 void h_bglToggleGroup(void* self, int id, bool on) {
+    if (g_simulating) return;
     bool allow = true;
     ev::bglToggleGroup()(self, id, on, allow);
     if (allow) o_bglToggleGroup(self, id, on);
@@ -224,6 +240,7 @@ void h_bglToggleGroup(void* self, int id, bool on) {
 // ============================================================== PlayerObject
 void (*o_poUpdate)(void*, float);
 void h_poUpdate(void* self, float dt) {
+    if (g_simulating) return o_poUpdate(self, dt);
     ev::poPreUpdate()(self, dt);
     o_poUpdate(self, dt);
     ev::poPostUpdate()(self, dt);
@@ -231,6 +248,7 @@ void h_poUpdate(void* self, float dt) {
 
 bool (*o_poPush)(void*, int);
 bool h_poPush(void* self, int button) {
+    if (g_simulating) return o_poPush(self, button);
     bool allow = true;
     ev::poPushButton()(self, button, allow);
     return allow ? o_poPush(self, button) : false;
@@ -238,6 +256,7 @@ bool h_poPush(void* self, int button) {
 
 bool (*o_poRelease)(void*, int);
 bool h_poRelease(void* self, int button) {
+    if (g_simulating) return o_poRelease(self, button);
     bool allow = true;
     ev::poReleaseButton()(self, button, allow);
     return allow ? o_poRelease(self, button) : false;
@@ -245,6 +264,7 @@ bool h_poRelease(void* self, int button) {
 
 void (*o_poDeathEffect)(void*);
 void h_poDeathEffect(void* self) {
+    if (g_simulating) return;
     bool allow = true;
     ev::poDeathEffect()(self, allow);
     if (allow) o_poDeathEffect(self);
@@ -258,6 +278,7 @@ void h_poGhost(void* self, int type) {
 
 void (*o_poSpiderDash)(void*, cc::Point, cc::Point);
 void h_poSpiderDash(void* self, cc::Point a, cc::Point b) {
+    if (g_simulating) return;
     bool allow = true;
     ev::poSpiderDash()(self, allow);
     if (allow) o_poSpiderDash(self, a, b);
@@ -265,6 +286,7 @@ void h_poSpiderDash(void* self, cc::Point a, cc::Point b) {
 
 void (*o_poActivateStreak)(void*);
 void h_poActivateStreak(void* self) {
+    if (g_simulating) return;
     bool allow = true;
     ev::poStreak()(self, allow);
     if (allow) o_poActivateStreak(self);
@@ -272,6 +294,7 @@ void h_poActivateStreak(void* self) {
 
 void (*o_poFadeStreak)(void*, float);
 void h_poFadeStreak(void* self, float d) {
+    if (g_simulating) return;
     bool allow = true;
     ev::poFadeStreak()(self, allow);
     if (allow) o_poFadeStreak(self, d);
@@ -279,6 +302,7 @@ void h_poFadeStreak(void* self, float d) {
 
 void (*o_poRingJump)(void*, void*, bool);
 void h_poRingJump(void* self, void* ring, bool skip) {
+    if (g_simulating) return o_poRingJump(self, ring, skip);
     bool allow = true;
     ev::poRingJump()(self, ring, allow);
     if (allow) o_poRingJump(self, ring, skip);

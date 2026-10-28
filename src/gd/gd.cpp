@@ -3,6 +3,7 @@
 
 #include <windows.h>
 #include <atomic>
+#include <cstring>
 
 namespace gd {
 
@@ -103,6 +104,72 @@ std::string levelName(void* lvl) {
     const char* data = cap >= 16 ? *reinterpret_cast<const char* const*>(base) : base;
     if (size > 4096) return {};
     return std::string(data, size);
+}
+
+// --- std::string MSVC: union{buf[16], ptr} + size + capacity ---------------------
+namespace {
+using MallocFn = void* (*)(size_t);
+using FreeFn = void (*)(void*);
+MallocFn crtMalloc() {
+    static auto f = reinterpret_cast<MallocFn>(GetProcAddress(GetModuleHandleW(L"ucrtbase.dll"), "malloc"));
+    return f;
+}
+FreeFn crtFree() {
+    static auto f = reinterpret_cast<FreeFn>(GetProcAddress(GetModuleHandleW(L"ucrtbase.dll"), "free"));
+    return f;
+}
+// std::allocator di MSVC: dai 4096 byte in su allinea a 32 e salva il puntatore vero subito prima
+constexpr size_t kBigAlloc = 4096;
+char* msvcAllocate(size_t bytes) {
+    auto m = crtMalloc();
+    if (!m) return nullptr;
+    if (bytes < kBigAlloc) return static_cast<char*>(m(bytes));
+    auto raw = static_cast<char*>(m(bytes + 39));
+    if (!raw) return nullptr;
+    auto p = reinterpret_cast<char*>((reinterpret_cast<uintptr_t>(raw) + 39) & ~uintptr_t(31));
+    reinterpret_cast<void**>(p)[-1] = raw;
+    return p;
+}
+void msvcDeallocate(char* p, size_t bytes) {
+    auto f = crtFree();
+    if (!f || !p) return;
+    f(bytes < kBigAlloc ? p : static_cast<char*>(reinterpret_cast<void**>(p)[-1]));
+}
+} // namespace
+
+std::string readStdString(const void* str) {
+    if (!str) return {};
+    auto base = static_cast<const char*>(str);
+    size_t size = *reinterpret_cast<const size_t*>(base + 16);
+    size_t cap = *reinterpret_cast<const size_t*>(base + 24);
+    if (size > cap || size > (64u << 20)) return {};
+    const char* data = cap >= 16 ? *reinterpret_cast<const char* const*>(base) : base;
+    return data ? std::string(data, size) : std::string();
+}
+
+bool writeStdString(void* str, const std::string& value) {
+    if (!str) return false;
+    auto base = static_cast<char*>(str);
+    auto& size = *reinterpret_cast<size_t*>(base + 16);
+    auto& cap = *reinterpret_cast<size_t*>(base + 24);
+    bool heap = cap >= 16;
+    char* data = heap ? *reinterpret_cast<char**>(base) : base;
+    if (value.size() <= cap) {
+        memcpy(data, value.data(), value.size());
+        data[value.size()] = 0;
+        size = value.size();
+        return true;
+    }
+    size_t newCap = value.size() | 15;
+    char* p = msvcAllocate(newCap + 1);
+    if (!p) return false;
+    memcpy(p, value.data(), value.size());
+    p[value.size()] = 0;
+    if (heap) msvcDeallocate(data, cap + 1);
+    *reinterpret_cast<char**>(base) = p;
+    size = value.size();
+    cap = newCap;
+    return true;
 }
 
 int levelNormalPercent(void* lvl) {

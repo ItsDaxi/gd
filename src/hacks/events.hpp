@@ -7,6 +7,13 @@
 
 #include "registry.hpp"
 
+namespace mh {
+// true mentre Show Trajectory simula un giocatore finto: gli hook centrali non emettono eventi
+// e bloccano gli effetti sul livello (morte, checkpoint, fine livello, gruppi, camera...)
+extern bool g_simulating;
+extern bool g_simDied; // il giocatore simulato e' morto
+} // namespace mh
+
 namespace mh::ev {
 
 template <class... A>
