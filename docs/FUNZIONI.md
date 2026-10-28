@@ -4,7 +4,7 @@ Generato da `tools/gen_features.py` leggendo il codice sorgente. Nomi e descrizi
 
 Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠️ parziale / con limitazioni · ❌ non disponibile senza Geode o senza patch del binario · 🔴 = conta come cheat (Safe Mode / Cheat Indicator)
 
-**Totale:** 198 funzioni — ✅ 160 · ⚠️ 25 · ❌ 13
+**Totale:** 198 funzioni — ✅ 160 · ⚠️ 27 · ❌ 11
 
 ## Bypass
 
@@ -29,7 +29,7 @@ Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠�
 | Accurate Percentage | Percentuale Accurata | ✅ | Allows decimal place customisation for the in-game Percentage Decimals setting |
 | Ball Rotation Bug | Bug Rotazione Ball | ❌ | Non disponibile in questa versione |
 | Classic Particles | Particelle Classiche | ⚠️ | Riattiva le particelle 'trailing' di PlayerObject: l'aspetto puo' differire dalla 2.1 |
-| Classic Pulse | Pulsazione Classica | ❌ | Non disponibile in questa versione |
+| Classic Pulse | Pulsazione Classica | ⚠️ | Calcola la pulsazione ad ogni frame dal metering FMOD della musica (invece che a 60 Hz) |
 | Classic Wave Trail | Wave Trail Classico | ⚠️ | Approssimato: scia dell'onda solida e senza pulsazione |
 | Coin Shower | Pioggia di monete | ✅ | AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA |
 | Custom Wave Trail |  | ✅ |  |
@@ -112,7 +112,7 @@ Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠�
 | Auto Pickup Coins 🔴 | Raccolta Automatica Monete | ✅ | Automatically collects user & secret coins! |
 | Auto Practice Mode |  | ✅ |  |
 | Auto Song Download | Download Automatico Canzone | ✅ | Automatically starts downloading songs when you open the level page |
-| Auto StartPos | Auto StartPos | ❌ | Non disponibile: richiede la creazione di StartPos a runtime |
+| Auto StartPos 🔴 | Auto StartPos | ⚠️ | Usa PlayLayer::addLiveStartPosObject; le StartPos create compaiono nello StartPos Switcher |
 | Checkpoint Limit Bypass | Bypass Limite Checkpoint | ✅ | Bypasses 50 checkpoint limit |
 | Click Between Frames | Click Between Frames | ⚠️ | Click Between Frames e' una mod Geode: non disponibile in questa versione standalone. Usa Click Between Steps. |
 | Click Between Steps |  | ✅ | Toggles the Click Between Steps in-game setting |

@@ -3,6 +3,11 @@
 
 #include <windows.h>
 
+// StartPos create a runtime (condivise con lo StartPos Switcher di level.cpp)
+namespace mh {
+extern std::vector<void*> g_liveStartPos;
+}
+
 using namespace mh;
 
 namespace {
@@ -235,41 +240,82 @@ struct Portal {
     int id;
 };
 
-void applySmartStartPos(void* pl) {
+std::vector<Portal> collectPortals(void* pl, std::vector<void*>* starts) {
     std::vector<Portal> portals;
-    std::vector<void*> starts;
     forEach(GDF(pl, GJBaseGameLayer, m_objects, void*), [&](void* o) {
         if (!o) return;
         int id = GDF(o, GameObject, m_objectID, int);
         double x = GDF(o, GameObject, m_positionX, double);
-        if (id == 31) starts.push_back(o);
-        else if (gamemodeFor(id) >= 0 || speedFor(id) >= 0 || id == 99 || id == 101 || id == 45 || id == 46 || id == 286 || id == 287)
+        if (id == 31) {
+            if (starts) starts->push_back(o);
+        } else if (gamemodeFor(id) >= 0 || speedFor(id) >= 0 || id == 99 || id == 101 || id == 45 || id == 46 || id == 286 ||
+                   id == 287) {
             portals.push_back({x, id});
+        }
     });
     std::sort(portals.begin(), portals.end(), [](const Portal& a, const Portal& b) { return a.x < b.x; });
-    for (void* sp : starts) {
-        void* settings = GDF(sp, StartPosObject, m_startSettings, void*);
-        if (!settings) continue;
-        double sx = GDF(sp, GameObject, m_positionX, double);
-        int mode = -1, speed = -1, mini = -1, mirror = -1, dual = -1;
-        for (auto& p : portals) {
-            // legacy: considera anche i portali sovrapposti alla StartPos
-            if (s_ssLegacy ? p.x > sx : p.x >= sx) break;
-            if (gamemodeFor(p.id) >= 0) mode = gamemodeFor(p.id);
-            if (speedFor(p.id) >= 0) speed = speedFor(p.id);
-            if (p.id == 99) mini = 0;
-            if (p.id == 101) mini = 1;
-            if (p.id == 45) mirror = 1;
-            if (p.id == 46) mirror = 0;
-            if (p.id == 286) dual = 1;
-            if (p.id == 287) dual = 0;
-        }
-        if (s_ssGm && mode >= 0) mem::at<int>(settings, gdg::off_unchecked::LevelSettingsObject::m_startMode) = mode;
-        if (s_ssSpeed && speed >= 0) mem::at<int>(settings, gdg::off_unchecked::LevelSettingsObject::m_startSpeed) = speed;
-        if (s_ssSize && mini >= 0) mem::at<bool>(settings, gdg::off_unchecked::LevelSettingsObject::m_startMini) = mini == 1;
-        if (s_ssMirror && mirror >= 0) mem::at<bool>(settings, gdg::off_unchecked::LevelSettingsObject::m_mirrorMode) = mirror == 1;
-        if (s_ssGm && dual >= 0) mem::at<bool>(settings, gdg::off_unchecked::LevelSettingsObject::m_startDual) = dual == 1;
+    return portals;
+}
+
+void applySettingsTo(void* sp, const std::vector<Portal>& portals, bool legacy) {
+    void* settings = GDF(sp, StartPosObject, m_startSettings, void*);
+    if (!settings) return;
+    double sx = GDF(sp, GameObject, m_positionX, double);
+    int mode = -1, speed = -1, mini = -1, mirror = -1, dual = -1;
+    for (auto& p : portals) {
+        // legacy: considera anche i portali sovrapposti alla StartPos
+        if (legacy ? p.x > sx : p.x >= sx) break;
+        if (gamemodeFor(p.id) >= 0) mode = gamemodeFor(p.id);
+        if (speedFor(p.id) >= 0) speed = speedFor(p.id);
+        if (p.id == 99) mini = 0;
+        if (p.id == 101) mini = 1;
+        if (p.id == 45) mirror = 1;
+        if (p.id == 46) mirror = 0;
+        if (p.id == 286) dual = 1;
+        if (p.id == 287) dual = 0;
     }
+    namespace lso = gdg::off_unchecked::LevelSettingsObject;
+    if (s_ssGm && mode >= 0) mem::at<int>(settings, lso::m_startMode) = mode;
+    if (s_ssSpeed && speed >= 0) mem::at<int>(settings, lso::m_startSpeed) = speed;
+    if (s_ssSize && mini >= 0) mem::at<bool>(settings, lso::m_startMini) = mini == 1;
+    if (s_ssMirror && mirror >= 0) mem::at<bool>(settings, lso::m_mirrorMode) = mirror == 1;
+    if (s_ssGm && dual >= 0) mem::at<bool>(settings, lso::m_startDual) = dual == 1;
+}
+
+void applySmartStartPos(void* pl) {
+    std::vector<void*> starts;
+    auto portals = collectPortals(pl, &starts);
+    for (void* sp : starts) applySettingsTo(sp, portals, s_ssLegacy);
+}
+
+// Auto StartPos: crea una StartPos subito dopo ogni portale di modalita' (usando la funzione
+// di GD 2.2 per le StartPos create dal menu di pausa) e la configura come Smart StartPos
+Hack& autoStartPos = hack("LEVEL", "LEVEL/HACK_AUTO_START_POS").isCheat()
+    .partial("Usa PlayLayer::addLiveStartPosObject; le StartPos create compaiono nello StartPos Switcher");
+
+void createAutoStartPos(void* pl) {
+    auto portals = collectPortals(pl, nullptr);
+    void* previous = GDF(pl, GJBaseGameLayer, m_startPosObject, void*);
+    for (auto& p : portals) {
+        if (gamemodeFor(p.id) < 0 && p.id != 286 && p.id != 287) continue;
+        void* sp = gd::call<void*>(gd::addr::GameObject::createWithKey, 31);
+        if (!sp || GDF(sp, GameObject, m_objectID, int) != 31) continue;
+        cc::retain(sp);
+        double y = 105.0;
+        forEach(GDF(pl, GJBaseGameLayer, m_objects, void*), [&](void* o) {
+            if (o && GDF(o, GameObject, m_objectID, int) == p.id && GDF(o, GameObject, m_positionX, double) == p.x)
+                y = GDF(o, GameObject, m_positionY, double);
+        });
+        double x = p.x + 5.0;
+        cc::setPosition(sp, cc::Point(static_cast<float>(x), static_cast<float>(y)));
+        GDF(sp, GameObject, m_positionX, double) = x;
+        GDF(sp, GameObject, m_positionY, double) = y;
+        gd::call<void>(gd::addr::PlayLayer::addLiveStartPosObject, pl, sp);
+        applySettingsTo(sp, portals, true);
+        g_liveStartPos.push_back(sp);
+    }
+    // addLiveStartPosObject puo' selezionare la StartPos appena creata: torna a quella di prima
+    GDF(pl, GJBaseGameLayer, m_startPosObject, void*) = previous;
 }
 
 // Shipcopter: nello swing si sale tenendo premuto e si scende rilasciando (comandi della nave)
@@ -285,7 +331,62 @@ void setGravity(void* player, bool upsideDown) {
 
 MH_ON(ev::plInit, [](void* pl) {
     if (smartStartPos.enabled) applySmartStartPos(pl);
+    if (autoStartPos.enabled) createAutoStartPos(pl);
 });
+MH_ON(ev::plQuit, [](void*) {
+    for (void* sp : g_liveStartPos) cc::release(sp);
+    g_liveStartPos.clear();
+});
+
+// =================================================================== COSMETIC: Classic Pulse
+namespace {
+Hack& classicPulse = hack("COSMETIC", "COSMETIC/HACK_CLASSIC_PULSE")
+    .partial("Calcola la pulsazione ad ogni frame dal metering FMOD della musica (invece che a 60 Hz)");
+
+struct MeteringInfo {
+    int numsamples;
+    float peaklevel[32];
+    float rmslevel[32];
+    short numchannels;
+};
+} // namespace
+
+MH_EVERY_FRAME(classicPulse) {
+    if (!classicPulse.enabled || !gd::playLayer()) return;
+    auto f = gd::fmod();
+    if (!f) return;
+    void* group = GDF(f, FMODAudioEngine, m_backgroundMusicChannel, void*);
+    static HMODULE fm = GetModuleHandleW(L"fmod.dll");
+    if (!group || !fm) return;
+    using GetDSP = int (*)(void*, int, void**);
+    using SetMetering = int (*)(void*, bool, bool);
+    using GetMetering = int (*)(void*, MeteringInfo*, MeteringInfo*);
+    static auto getDSP = reinterpret_cast<GetDSP>(GetProcAddress(fm, "?getDSP@ChannelControl@FMOD@@QEAA?AW4FMOD_RESULT@@HPEAPEAVDSP@2@@Z"));
+    static auto setMetering = reinterpret_cast<SetMetering>(GetProcAddress(fm, "?setMeteringEnabled@DSP@FMOD@@QEAA?AW4FMOD_RESULT@@_N0@Z"));
+    static auto getMetering = reinterpret_cast<GetMetering>(GetProcAddress(fm, "?getMeteringInfo@DSP@FMOD@@QEAA?AW4FMOD_RESULT@@PEAUFMOD_DSP_METERING_INFO@@0@Z"));
+    if (!getDSP || !setMetering || !getMetering) return;
+    void* dsp = nullptr;
+    if (getDSP(group, -1 /* FMOD_CHANNELCONTROL_DSP_HEAD */, &dsp) != 0 || !dsp) return;
+    static void* enabledOn = nullptr;
+    if (enabledOn != dsp) {
+        setMetering(dsp, false, true);
+        enabledOn = dsp;
+    }
+    MeteringInfo out{};
+    if (getMetering(dsp, nullptr, &out) != 0) return;
+    float peak = 0.f, rms = 0.f;
+    int n = std::clamp<int>(out.numchannels, 0, 32);
+    for (int i = 0; i < n; i++) {
+        peak = std::max(peak, out.peaklevel[i]);
+        rms = std::max(rms, out.rmslevel[i]);
+    }
+    float& p1 = GDF(f, FMODAudioEngine, m_pulse1, float);
+    float& p2 = GDF(f, FMODAudioEngine, m_pulse2, float);
+    float& p3 = GDF(f, FMODAudioEngine, m_pulse3, float);
+    p1 = peak;
+    p2 = p2 * 0.8f + peak * 0.2f;
+    p3 = rms;
+}
 
 MH_ON(ev::poPushButton, [](void* player, int button, bool& allow) {
     if (!shipcopter.enabled || button != 1 || !GDF(player, PlayerObject, m_isSwing, bool)) return;

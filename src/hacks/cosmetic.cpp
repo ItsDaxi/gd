@@ -19,7 +19,6 @@ Hack& accuratePct = H("COSMETIC/ACCURATE_PERCENTAGE/HACK_ACCURATE_PERCENTAGE")
 
 Hack& ballRotationBug = H("COSMETIC/HACK_BALL_ROTATION_BUG").partial("Non disponibile in questa versione");
 Hack& noCircles = H("COSMETIC/HACK_NO_CIRCLES");
-Hack& classicPulse = H("COSMETIC/HACK_CLASSIC_PULSE").partial("Non disponibile in questa versione");
 Hack& classicWaveTrail = H("COSMETIC/HACK_CLASSIC_WAVE_TRAIL").partial("Approssimato: scia dell'onda solida e senza pulsazione");
 Hack& coinShower = H("COSMETIC/HACK_COIN_SHOWER");
 Hack& noEndShake = H("COSMETIC/HACK_NO_END_SHAKE");

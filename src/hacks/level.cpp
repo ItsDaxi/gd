@@ -753,6 +753,11 @@ Hack& spSwitcher = hack("LEVEL", "LEVEL/STARTPOS_SWITCHER/HACK_STARTPOS_SWITCHER
 // funziona allo stesso modo su 2.209 e 2.2091
 std::vector<void*> s_startPositions;
 void* s_startPosLayer = nullptr;
+} // namespace
+namespace mh {
+std::vector<void*> g_liveStartPos; // StartPos create a runtime (Auto StartPos, extras.cpp)
+}
+namespace {
 
 const std::vector<void*>& startPositions(void* pl) {
     if (pl != s_startPosLayer) {
@@ -761,6 +766,7 @@ const std::vector<void*>& startPositions(void* pl) {
         forEach(GDF(pl, GJBaseGameLayer, m_objects, void*), [](void* o) {
             if (o && GDF(o, GameObject, m_objectID, int) == 31) s_startPositions.push_back(o);
         });
+        for (void* o : g_liveStartPos) s_startPositions.push_back(o);
         std::sort(s_startPositions.begin(), s_startPositions.end(), [](void* a, void* b) {
             return GDF(a, GameObject, m_positionX, double) < GDF(b, GameObject, m_positionX, double);
         });
@@ -850,8 +856,6 @@ static gui::Overlay s_spOverlay([] {
 // ------------------------------------------------------------------ funzioni non replicabili senza la DLL originale
 namespace {
 Hack& autoSongDownload = hack("LEVEL", "LEVEL/HACK_AUTO_SONG_DOWNLOAD");
-Hack& autoStartPos = hack("LEVEL", "LEVEL/HACK_AUTO_START_POS")
-    .partial("Non disponibile: richiede la creazione di StartPos a runtime");
 Hack& showTrajectory = hack("LEVEL", "LEVEL/SHOW_TRAJECTORY/HACK_SHOW_TRAJECTORY")
     .partial("Non disponibile: richiede la simulazione della fisica di GD");
 int s_trajIter = 312;
