@@ -1,0 +1,102 @@
+#pragma once
+// Wrapper minimi per libcocos2d.dll, risolti tramite i nomi esportati (MSVC mangled).
+// L'elenco completo degli export e' in tools/cocos_exports.txt.
+
+#include <cstdint>
+
+namespace cc {
+
+// Stesso ABI di cocos2d::CCPoint: il costruttore di copia definito dall'utente
+// cambia il modo in cui MSVC passa la struttura per valore, quindi va replicato.
+struct Point {
+    float x = 0, y = 0;
+    constexpr Point() = default;
+    constexpr Point(float x_, float y_) : x(x_), y(y_) {}
+    constexpr Point(const Point& o) : x(o.x), y(o.y) {}
+    constexpr Point& operator=(const Point& o) {
+        x = o.x;
+        y = o.y;
+        return *this;
+    }
+};
+struct Size { float width, height; };
+struct Color3B { uint8_t r, g, b; };
+
+void* resolve(const char* symbol);
+
+// Chiama un export: cc::call<R>("?simbolo", args...)
+template <class R, class... A>
+inline R call(const char* symbol, A... args) {
+    using Fn = R (*)(A...);
+    auto fn = reinterpret_cast<Fn>(resolve(symbol));
+    if (!fn) return R();
+    return fn(args...);
+}
+
+// Indice nella vtable di un metodo virtuale (cercando l'export dentro la vftable esportata)
+int vtableIndex(const char* vftableSymbol, const char* methodSymbol);
+
+// Chiamata virtuale tramite indice (rispetta gli override delle sottoclassi, es. CCSprite::setVisible)
+template <class R, class... A>
+inline R vcall(void* obj, int index, A... args) {
+    if (!obj || index < 0) return R();
+    auto vt = *reinterpret_cast<void***>(obj);
+    using Fn = R (*)(void*, A...);
+    return reinterpret_cast<Fn>(vt[index])(obj, args...);
+}
+
+// --- CCDirector ---
+void* director();
+void* runningScene();
+void* scheduler();
+void* openGLView();
+Size winSize();
+void setAnimationInterval(double interval);
+double animationInterval();
+float deltaTime();
+void* glfwWindow();
+
+// --- CCScheduler ---
+void setTimeScale(float s);
+float timeScale();
+
+// --- CCNode ---
+void setVisible(void* node, bool v);
+bool isVisible(void* node);
+void* children(void* node);          // CCArray*
+void* parent(void* node);
+Point position(void* node);
+void setPosition(void* node, Point p);
+float scale(void* node);
+void setScale(void* node, float s);
+int zOrder(void* node);
+void setZOrder(void* node, int z);
+void removeFromParent(void* node);
+int tag(void* node);
+
+// --- CCRGBAProtocol ---
+void setOpacity(void* node, uint8_t o); // tramite vtable del nodo (CCNodeRGBA/CCSprite)
+void setColor(void* node, Color3B c);
+
+// --- CCArray ---
+unsigned arrayCount(void* arr);
+void* arrayAt(void* arr, unsigned i);
+
+// --- CCObject ---
+void retain(void* o);
+void release(void* o);
+
+// --- CCParticleSystem ---
+void stopSystem(void* ps);
+void resetSystem(void* ps);
+
+// --- CCMotionStreak ---
+void streakReset(void* streak);
+
+// --- CCTransitionFade & co. ---
+void* transitionCreate(int type, float duration, void* scene);
+
+// --- Clipboard / misc ---
+bool hasExport(const char* symbol);
+
+} // namespace cc
