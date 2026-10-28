@@ -236,13 +236,7 @@ static gui::Overlay s_statusOverlay([] {
 
 // Riga in cima alla finestra Status: Opacity / Scale / Hide (come nell'immagine di riferimento)
 static gui::WindowContent s_statusHeader("STATUS", [] {
-    float w = ImGui::GetContentRegionAvail().x;
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6, 4));
-    ImGui::PushItemWidth(w * 0.5f);
-    if (ImGui::DragFloat("##op", &s_opacity, 0.01f, 0.f, 1.f, "Opacity: %.2fx")) config::markDirty();
-    ImGui::SameLine(0, 0);
-    if (ImGui::DragFloat("##sc", &s_scale, 0.01f, 0.25f, 4.f, "Scale: %.2fx")) config::markDirty();
-    ImGui::PopItemWidth();
-    ImGui::PopStyleVar();
+    gui::sliderFloatRow("##op", &s_opacity, 0.f, 1.f, "Opacity: %.2fx");
+    gui::sliderFloatRow("##sc", &s_scale, 0.25f, 4.f, "Scale: %.2fx");
     gui::checkboxRow(T("STATUS/HIDE"), &s_hideAll);
 }, true);

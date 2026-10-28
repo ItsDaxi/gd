@@ -68,6 +68,14 @@ void* glfwWindow() {
     return call<void*>("?getWindow@CCEGLView@cocos2d@@QEBAPEAUGLFWwindow@@XZ", v);
 }
 
+void showCursor(bool show) {
+    if (auto v = openGLView()) call<void>("?showCursor@CCEGLView@cocos2d@@QEAAX_N@Z", v, show);
+}
+
+void lockCursor(bool lock) {
+    if (auto v = openGLView()) call<void>("?toggleLockCursor@CCEGLView@cocos2d@@QEAAX_N@Z", v, lock);
+}
+
 Size winSize() {
     // metodo che restituisce una classe per valore: MSVC usa un puntatore nascosto dopo `this`
     Size out{0, 0};

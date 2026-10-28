@@ -55,6 +55,8 @@ void setAnimationInterval(double interval);
 double animationInterval();
 float deltaTime();
 void* glfwWindow();
+void showCursor(bool show);   // CCEGLView::showCursor
+void lockCursor(bool lock);   // CCEGLView::toggleLockCursor
 
 // --- CCScheduler ---
 void setTimeScale(float s);

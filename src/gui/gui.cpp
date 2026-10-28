@@ -6,6 +6,7 @@
 #include "hacks/config.hpp"
 #include "hacks/registry.hpp"
 #include "gd/gd.hpp"
+#include "gd/cocos.hpp"
 
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
@@ -30,6 +31,7 @@ HWND window() { return g_hwnd; }
 bool initialized() { return g_init; }
 void beginKeyCapture(int* target) { g_captureTarget = target; }
 bool capturingKey() { return g_captureTarget != nullptr; }
+bool capturing(const int* target) { return g_captureTarget == target; }
 bool keyDown(int vk) { return vk > 0 && vk < 256 && g_keys[vk]; }
 
 void runOnMainThread(void (*fn)(void*), void* ctx) {
@@ -45,31 +47,45 @@ static bool isKeyMsg(UINT msg) {
     return msg == WM_KEYDOWN || msg == WM_KEYUP || msg == WM_SYSKEYDOWN || msg == WM_SYSKEYUP || msg == WM_CHAR;
 }
 
+static bool isToggleKey(int vk) {
+    auto& ui = config::ui();
+    return vk > 0 && (vk == ui.toggleKey || vk == ui.altToggleKey);
+}
+
+// tasto che scrive un carattere (es. una lettera): mentre si scrive non deve chiudere il menu
+static bool isCharKey(int vk) { return vk != VK_TAB && MapVirtualKeyW(static_cast<UINT>(vk), MAPVK_VK_TO_CHAR) != 0; }
+
 static LRESULT CALLBACK hookedWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
+    bool typing = g_init && ImGui::GetIO().WantTextInput;
     if (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN || msg == WM_KEYUP || msg == WM_SYSKEYUP) {
         bool down = msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN;
         int vk = static_cast<int>(wp);
         if (vk > 0 && vk < 256) g_keys[vk] = down;
         bool repeat = (lp & (1 << 30)) != 0;
-        if (down && !repeat) {
-            if (g_captureTarget) {
-                *g_captureTarget = vk == VK_ESCAPE ? 0 : vk;
-                g_captureTarget = nullptr;
-                config::markDirty();
-                return 0;
-            }
-            bool typing = g_init && ImGui::GetIO().WantTextInput;
-            if (!typing) {
-                auto& ui = config::ui();
-                if (vk == ui.toggleKey || (ui.altToggleKey && vk == ui.altToggleKey)) {
-                    toggleMenu();
-                    return 0;
-                }
-                if (dispatchKey(vk, true)) return 0;
-            }
-        } else if (!down) {
-            dispatchKey(static_cast<int>(wp), false);
+        if (down && !repeat && g_captureTarget) {
+            *g_captureTarget = vk == VK_ESCAPE ? 0 : vk;
+            g_captureTarget = nullptr;
+            config::markDirty();
+            return 0;
         }
+        if (isToggleKey(vk) && (!typing || !isCharKey(vk))) {
+            // il tasto del menu non arriva mai ne' a ImGui (niente navigazione con Tab) ne' al gioco,
+            // compresi ripetizione e rilascio
+            if (down && !repeat) toggleMenu();
+            return 0;
+        }
+        if (!typing) {
+            if (down && !repeat) {
+                if (dispatchKey(vk, true)) return 0;
+            } else if (!down) {
+                dispatchKey(vk, false);
+            }
+        }
+        // Tab serve solo nei campi di testo: altrimenti ImGui lo userebbe per spostare il focus
+        if (vk == VK_TAB && !typing) return CallWindowProcW(g_origWndProc, hwnd, msg, wp, lp);
+    }
+    if (msg == WM_CHAR && wp == '\t') {
+        if (isToggleKey(VK_TAB) || !typing) return 0; // nessun carattere Tab ne' a ImGui ne' a GD
     }
 
     if (g_init) {
@@ -109,6 +125,38 @@ static void loadFonts(float scale) {
 }
 
 static float g_fontScale = 0.f;
+
+// Come Mega Hack: aprendo il menu durante il gioco il cursore viene mostrato e sbloccato,
+// senza mettere in pausa; chiudendolo si ripristina lo stato di GD.
+static void updateCursor() {
+    static bool lastOpen = false, hidCursor = false, wasLocked = false;
+    bool open = menuOpen();
+    CURSORINFO ci{sizeof(ci)};
+    bool hidden = GetCursorInfo(&ci) && !(ci.flags & CURSOR_SHOWING);
+    if (open && !lastOpen) {
+        RECT clip{}, screen{GetSystemMetrics(SM_XVIRTUALSCREEN), GetSystemMetrics(SM_YVIRTUALSCREEN),
+                           GetSystemMetrics(SM_XVIRTUALSCREEN) + GetSystemMetrics(SM_CXVIRTUALSCREEN),
+                           GetSystemMetrics(SM_YVIRTUALSCREEN) + GetSystemMetrics(SM_CYVIRTUALSCREEN)};
+        GetClipCursor(&clip);
+        wasLocked = clip.left > screen.left || clip.top > screen.top || clip.right < screen.right || clip.bottom < screen.bottom;
+        hidCursor = hidden;
+        if (wasLocked) {
+            cc::lockCursor(false);
+            ClipCursor(nullptr);
+        }
+    }
+    if (open && hidden) cc::showCursor(true); // GD potrebbe rinasconderlo: lo rimostriamo finche' il menu e' aperto
+    if (!open && lastOpen) {
+        auto pl = gd::playLayer();
+        bool playing = pl && !GDF(pl, PlayLayer, m_isPaused, bool);
+        if (playing && hidCursor) cc::showCursor(false);
+        if (playing && wasLocked) cc::lockCursor(true);
+    }
+    lastOpen = open;
+    // ripiego: se il cursore del sistema resta nascosto, ImGui ne disegna uno suo
+    GetCursorInfo(&ci);
+    ImGui::GetIO().MouseDrawCursor = open && !(ci.flags & CURSOR_SHOWING);
+}
 
 static void initImGui(HWND hwnd) {
     IMGUI_CHECKVERSION();
@@ -169,12 +217,7 @@ static void renderFrame() {
 
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplWin32_NewFrame();
-    {
-        // GD nasconde il cursore durante il gioco: disegnalo noi quando il menu e' aperto
-        CURSORINFO ci{sizeof(ci)};
-        bool hidden = GetCursorInfo(&ci) && !(ci.flags & CURSOR_SHOWING);
-        ImGui::GetIO().MouseDrawCursor = menuOpen() && hidden;
-    }
+    updateCursor();
     ImGui::NewFrame();
     drawOverlays();
     drawMenu();

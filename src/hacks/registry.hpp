@@ -31,6 +31,7 @@ struct Hack {
     bool cheat = false;      // conta come cheat (safe mode / cheat indicator)
     bool button = false;     // azione istantanea invece di un toggle
     bool notice = false;     // funzione disponibile solo in parte (vedi tip)
+    bool unavailable = false; // non disponibile in questa versione (mostrata in grigio)
     std::string extraTip;    // nota aggiuntiva (es. limitazioni)
     std::vector<Option> options;
     std::function<void(bool)> onToggle;
@@ -41,7 +42,12 @@ struct Hack {
 
     // --- builder ---
     Hack& isCheat(bool c = true) { cheat = c; return *this; }
-    Hack& partial(std::string tip) { notice = true; extraTip = std::move(tip); return *this; }
+    Hack& partial(std::string tip) {
+        notice = true;
+        unavailable = tip.rfind("Non disponibile", 0) == 0;
+        extraTip = std::move(tip);
+        return *this;
+    }
     Hack& name(std::string n) { displayName = std::move(n); return *this; }
     Hack& toggled(std::function<void(bool)> f) { onToggle = std::move(f); return *this; }
     Hack& ui(std::function<void()> f) { customUI = std::move(f); return *this; }

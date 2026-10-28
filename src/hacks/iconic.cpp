@@ -74,42 +74,34 @@ void channelUI(Channel& c, int idx) {
     ImGui::PushID(idx);
     char label[96];
     snprintf(label, sizeof(label), "%s: %s", T(c.label), modeName(c.mode));
-    if (gui::buttonRow(label)) {
+    // click: cambia effetto (No Effect -> Static -> Rainbow -> Fade)
+    if (gui::buttonRow(label, c.mode != NoEffect)) {
         c.mode = (c.mode + 1) % Count;
         config::markDirty();
     }
     if (c.mode == Static || c.mode == Fade) {
-        ImGui::Indent(6);
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(6, 3));
+        ImGui::Dummy(ImVec2(0, 2));
+        ImGui::Indent(8);
         if (ImGui::ColorEdit3("A", c.a, ImGuiColorEditFlags_NoInputs)) config::markDirty();
         if (c.mode == Fade) {
             ImGui::SameLine();
             if (ImGui::ColorEdit3("B", c.b, ImGuiColorEditFlags_NoInputs)) config::markDirty();
         }
-        ImGui::Unindent(6);
+        ImGui::Unindent(8);
+        ImGui::PopStyleVar();
     }
-    if (c.mode == Rainbow || c.mode == Fade) {
-        ImGui::PushItemWidth(-1);
-        if (ImGui::DragFloat("##spd", &c.speed, 0.01f, 0.05f, 10.f, "Speed: %.2fx")) config::markDirty();
-        ImGui::PopItemWidth();
-    }
+    if (c.mode == Rainbow || c.mode == Fade) gui::sliderFloatRow("##spd", &c.speed, 0.05f, 10.f, "Speed: %.2fx");
     ImGui::PopID();
 }
 
 void iconicUI() {
-    float w = ImGui::GetContentRegionAvail().x;
     // selettore Player 1 / Player 2 come nell'immagine di riferimento
-    for (int p = 0; p < 2; p++) {
-        if (p) ImGui::SameLine(0, 0);
-        bool sel = s_selected == p;
-        ImGui::PushStyleColor(ImGuiCol_Button, sel ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_FrameBg]);
-        if (ImGui::Button(p ? "Player 2" : "Player 1", ImVec2(w * 0.5f, 22 * config::ui().scale))) s_selected = p;
-        ImGui::PopStyleColor();
-    }
+    int r = gui::buttonPair("Player 1", "Player 2", s_selected == 0, s_selected == 1);
+    if (r) s_selected = r - 1;
     auto& fx = s_fx[s_selected];
     for (int i = 0; i < ChannelCount; i++) channelUI(fx.ch[i], i);
-    ImGui::PushItemWidth(-1);
-    if (ImGui::DragFloat("##cycle", &s_cycleSpeed, 0.01f, 0.05f, 10.f, "Cycle Speed: %.2fx")) config::markDirty();
-    ImGui::PopItemWidth();
+    gui::sliderFloatRow("##cycle", &s_cycleSpeed, 0.05f, 10.f, "Cycle Speed: %.2fx");
     gui::checkboxRow("Same Dual Colour", &s_sameDual);
 }
 

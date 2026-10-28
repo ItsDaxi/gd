@@ -38,7 +38,8 @@ Hack& noclipLimits = hack("LEVEL", "LEVEL/NOCLIP_LIMITS/HACK_NOCLIP_LIMITS")
     .optInt("LEVEL/NOCLIP_LIMITS/DROPDOWN/DEATHS_LIMIT", &s_deathLimit, 1, 1000);
 
 float s_tintAlpha = 0.f;
-bool s_diedThisFrame = false;
+bool s_diedThisFrame = false; // contatto con un ostacolo in questo frame
+bool s_diedLastFrame = false; // ... e nel frame precedente
 
 } // namespace
 
@@ -57,12 +58,15 @@ MH_ON(ev::plDestroyPlayer, [](void* pl, void* player, void*, bool& allow) {
 });
 
 MH_ON(ev::plNoclipDeath, [](void*, void*) {
-    if (!s_diedThisFrame) stats::noclipDeaths++;
+    // GD chiama destroyPlayer ad ogni tick passato dentro l'ostacolo: si conta una morte
+    // solo quando il giocatore ci entra (nessun contatto nel frame precedente)
+    if (!s_diedThisFrame && !s_diedLastFrame) stats::noclipDeaths++;
     s_diedThisFrame = true;
     if (s_noclipTint) s_tintAlpha = 1.f;
 });
 
 MH_ON(ev::plReset, [](void*) {
+    s_diedThisFrame = s_diedLastFrame = false;
     stats::noclipDeaths = 0;
     stats::totalFrames = 0;
     stats::deadFrames = 0;
@@ -71,6 +75,7 @@ MH_ON(ev::plReset, [](void*) {
 MH_ON(ev::plPostUpdate, [](void* pl, float) {
     stats::totalFrames++;
     if (s_diedThisFrame) stats::deadFrames++;
+    s_diedLastFrame = s_diedThisFrame;
     s_diedThisFrame = false;
     if (noclip.enabled && noclipLimits.enabled) {
         bool kill = (s_accOn && stats::noclipAccuracy() < s_accLimit) || (s_deathOn && stats::noclipDeaths >= s_deathLimit);

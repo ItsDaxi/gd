@@ -68,7 +68,8 @@ void applyTheme() {
     s.FrameRounding = 2;
     s.ItemSpacing = ImVec2(4, 0);
     s.ItemInnerSpacing = ImVec2(4, 2);
-    s.ScrollbarSize = 4;
+    s.ScrollbarSize = 6;
+    s.ScrollbarRounding = 3;
     s.PopupRounding = 2;
     s.PopupBorderSize = 1;
     s.GrabRounding = 2;

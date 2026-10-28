@@ -7,57 +7,47 @@
 
 using namespace mh;
 
+namespace {
+std::string lowerStr(std::string s) {
+    for (auto& c : s) c = static_cast<char>(tolower(static_cast<unsigned char>(c)));
+    return s;
+}
+} // namespace
+
 // ================================================================== HOME
 static gui::WindowContent s_homeUI("HOME", [] {
     auto& ui = config::ui();
-    float s = ui.scale;
-    float w = ImGui::GetContentRegionAvail().x;
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4 * s, 3 * s));
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6 * s, 4 * s));
-    ImGui::PushItemWidth(w);
 
-    // ricerca
-    static bool focusSearch = false;
-    if (focusSearch) {
-        ImGui::SetKeyboardFocusHere();
-        focusSearch = false;
-    }
-    char buf[128];
-    snprintf(buf, sizeof(buf), "%s", gui::g_search.c_str());
-    if (ImGui::InputTextWithHint("##search", T("HOME/SEARCH/SEARCH"), buf, sizeof(buf))) gui::g_search = buf;
-    if (ImGui::IsWindowAppearing() && ui.autoSelectSearch) focusSearch = true;
+    // ricerca (filtra tutte le finestre); con Auto-Select riceve il focus all'apertura del menu
+    static bool wasOpen = false;
+    if (gui::menuOpen() && !wasOpen && ui.autoSelectSearch) ImGui::SetKeyboardFocusHere();
+    wasOpen = gui::menuOpen();
+    gui::inputRow("##search", T("HOME/SEARCH/SEARCH"), &gui::g_search);
 
-    // tempo delle animazioni e scala
-    if (ImGui::DragInt("##anim", &ui.animMs, 1.f, 0, 2000, (std::string(T("HOME/ANIM_SPEED/PRE")) + ": %dms").c_str()))
-        config::markDirty();
-    ImGui::PopItemWidth();
-    ImGui::PushItemWidth(w * 0.6f);
+    std::string animFmt = std::string(T("HOME/ANIM_SPEED/PRE")) + ": %dms";
+    gui::sliderIntRow("##anim", &ui.animMs, 0, 1000, animFmt.c_str());
+
+    // scala: applicata con "Set Scale" (cambia la dimensione dei font)
     static float pendingScale = ui.scale;
-    ImGui::DragFloat("##scale", &pendingScale, 0.01f, 0.5f, 3.f, "%.2fx");
-    ImGui::PopItemWidth();
-    ImGui::SameLine();
-    if (ImGui::Button("Set Scale", ImVec2(-1, 0))) {
+    gui::sliderFloatRow("##scale", &pendingScale, 0.5f, 2.5f, "Scale: %.2fx");
+    if (gui::buttonRow("Set Scale")) {
         ui.scale = pendingScale;
         config::markDirty();
     }
     if (gui::buttonRow(T("HOME/SORT_TABS"))) gui::sortWindows();
 
-    // auto-save / save
-    bool as = ui.autoSave;
-    ImGui::PushStyleColor(ImGuiCol_Text, as ? gui::accent() : gui::textColor());
-    if (ImGui::Button("Auto Save", ImVec2(w * 0.5f - 2 * s, 0))) {
+    int r = gui::buttonPair("Auto Save", T("REPLAY/SAVE_LAYOUT/SAVE"), ui.autoSave, false);
+    if (r == 1) {
         ui.autoSave = !ui.autoSave;
         config::markDirty();
+    } else if (r == 2) {
+        config::save();
     }
-    ImGui::PopStyleColor();
-    ImGui::SameLine();
-    if (ImGui::Button(T("REPLAY/SAVE_LAYOUT/SAVE"), ImVec2(-1, 0))) config::save();
 
     // lingua
-    auto langs = lang::available();
-    ImGui::PushItemWidth(w);
-    if (ImGui::BeginCombo("##lang", (std::string(T("HOME/LANGUAGE")) + ": " + lang::current()).c_str())) {
-        for (auto& l : langs) {
+    std::string langPreview = std::string(T("HOME/LANGUAGE")) + ": " + lang::current();
+    if (gui::beginComboRow("##lang", langPreview.c_str())) {
+        for (auto& l : lang::available()) {
             if (ImGui::Selectable(l.c_str(), l == lang::current())) {
                 ui.language = l;
                 lang::set(l);
@@ -67,70 +57,68 @@ static gui::WindowContent s_homeUI("HOME", [] {
         ImGui::EndCombo();
     }
     // tema
-    const char* themes[] = {T("HOME/THEME/0/TOGGLE"), T("HOME/THEME/1/TOGGLE"), T("HOME/THEME/2/TOGGLE"),
-                            T("HOME/THEME/3/TOGGLE"), T("HOME/THEME/4/TOGGLE"), T("HOME/THEME/5/TOGGLE")};
-    int theme = ui.theme;
-    if (ImGui::Combo("##theme", &theme, themes, gui::presetCount())) {
-        gui::applyPreset(theme);
-        config::markDirty();
+    std::string themePreview = std::string(T("HOME/THEME")) + ": " + T("HOME/THEME/" + std::to_string(ui.theme) + "/TOGGLE");
+    if (gui::beginComboRow("##theme", themePreview.c_str())) {
+        for (int i = 0; i < gui::presetCount(); i++) {
+            if (ImGui::Selectable(T("HOME/THEME/" + std::to_string(i) + "/TOGGLE"), ui.theme == i)) {
+                gui::applyPreset(i);
+                config::markDirty();
+            }
+        }
+        ImGui::EndCombo();
     }
-    ImGui::PopItemWidth();
-    if (ImGui::TreeNode(T("HOME/THEME/ADVANCED"))) {
+    static bool advanced = false;
+    gui::checkboxRow(T("HOME/THEME/ADVANCED"), &advanced);
+    if (advanced) {
         bool changed = false;
+        ImGui::Indent(8);
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 4));
         changed |= ImGui::ColorEdit4(T("HOME/THEME/ADVANCED/ACCENT"), ui.accent, ImGuiColorEditFlags_NoInputs);
         changed |= ImGui::ColorEdit4(T("HOME/THEME/ADVANCED/TITLE_ACCENT"), ui.titleAccent, ImGuiColorEditFlags_NoInputs);
         changed |= ImGui::ColorEdit4(T("HOME/THEME/ADVANCED/BACKGROUND"), ui.background, ImGuiColorEditFlags_NoInputs);
         changed |= ImGui::Checkbox(T("HOME/THEME/ADVANCED/DARK_TEXT"), &ui.darkText);
+        ImGui::PopStyleVar();
+        ImGui::Unindent(8);
         if (changed) {
             gui::applyTheme();
             config::markDirty();
         }
-        ImGui::TreePop();
     }
     gui::checkboxRow(T("HOME/DOT"), &ui.indicatorDot);
     gui::checkboxRow(T("HOME/SEARCH/AUTO_SELECT"), &ui.autoSelectSearch);
     gui::checkboxRow("Hide on Toggle", &ui.hideOnToggle);
     gui::keyButton("Menu", &ui.toggleKey);
     gui::keyButton(T("HOME/SHORTCUT/ALT"), &ui.altToggleKey);
-
-    if (ImGui::TreeNode(T("HOME/MISC"))) {
-        if (ImGui::Button(T("HOME/MISC/LOAD_LANG"), ImVec2(-1, 0))) {
-            lang::init();
-            lang::set(ui.language);
-        }
-        ImGui::TextDisabled("%s", T("HOME/MISC/LICENSES"));
-        ImGui::TextWrapped("Dear ImGui (MIT), MinHook (BSD-2), nlohmann/json (MIT). Indirizzi: geode-sdk/bindings. "
-                           "Testi: absolllute/Mega-Hack-Translate.");
-        ImGui::TreePop();
+    if (gui::buttonRow(T("HOME/MISC/LOAD_LANG"))) {
+        lang::init();
+        lang::set(ui.language);
     }
     size_t ok = 0;
     for (auto& h : hooks::list()) ok += h.ok;
-    ImGui::TextDisabled("GD %s%s | hook %zu/%zu", gd::versionString(), gd::versionMatches() ? "" : " (!)", ok, hooks::list().size());
-    ImGui::PopStyleVar(2);
+    char info[96];
+    snprintf(info, sizeof(info), "GD %s%s | hook %zu/%zu", gd::versionString(), gd::versionMatches() ? "" : " (!)", ok,
+             hooks::list().size());
+    gui::labelRow(info);
 }, true);
 
 // ================================================================== KEYBINDS
 static gui::WindowContent s_keybindsUI("KEYBINDS", [] {
-    float s = config::ui().scale;
-    float w = ImGui::GetContentRegionAvail().x;
     static int selected = -1;
     static int pendingKey = 0;
-    static char filter[64] = "";
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4 * s, 3 * s));
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6 * s, 4 * s));
+    static std::string filter;
     auto& list = hacks();
-    std::string preview = selected >= 0 && selected < static_cast<int>(list.size()) ? lang::tr(list[selected].id) : T("KEYBINDS/SET");
-    ImGui::PushItemWidth(w);
-    if (ImGui::BeginCombo("##kbhack", preview.c_str(), ImGuiComboFlags_HeightLarge)) {
-        ImGui::InputTextWithHint("##kbfilter", T("HOME/SEARCH/SEARCH"), filter, sizeof(filter));
-        std::string f = filter;
-        for (auto& c : f) c = static_cast<char>(tolower(static_cast<unsigned char>(c)));
+    bool valid = selected >= 0 && selected < static_cast<int>(list.size());
+    std::string preview = valid ? lang::tr(list[selected].id) : T("KEYBINDS/SET");
+    if (gui::beginComboRow("##kbhack", preview.c_str())) {
+        char buf[64];
+        snprintf(buf, sizeof(buf), "%s", filter.c_str());
+        if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
+        if (ImGui::InputTextWithHint("##kbfilter", T("HOME/SEARCH/SEARCH"), buf, sizeof(buf))) filter = buf;
+        std::string f = lowerStr(filter);
         for (int i = 0; i < static_cast<int>(list.size()); i++) {
             if (list[i].window.rfind("_", 0) == 0) continue;
-            std::string name = lang::tr(list[i].id);
-            std::string low = name;
-            for (auto& c : low) c = static_cast<char>(tolower(static_cast<unsigned char>(c)));
-            if (!f.empty() && low.find(f) == std::string::npos) continue;
+            const std::string& name = lang::tr(list[i].id);
+            if (!f.empty() && lowerStr(name).find(f) == std::string::npos) continue;
             ImGui::PushID(i);
             if (ImGui::Selectable(name.c_str(), selected == i)) {
                 selected = i;
@@ -140,16 +128,13 @@ static gui::WindowContent s_keybindsUI("KEYBINDS", [] {
         }
         ImGui::EndCombo();
     }
-    ImGui::PopItemWidth();
     gui::keyButton(T("KEYBINDS/SHORTCUT"), &pendingKey);
-    float half = (w - 4 * s) * 0.5f;
-    bool valid = selected >= 0 && selected < static_cast<int>(list.size());
-    if (ImGui::Button(T("KEYBINDS/REMOVE"), ImVec2(half, 0)) && valid) {
+    int r = gui::buttonPair("Remove", "Set");
+    if (r == 1 && valid) {
         list[selected].keybind = 0;
+        pendingKey = 0;
         config::markDirty();
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Set", ImVec2(half, 0)) && valid) {
+    } else if (r == 2 && valid) {
         if (!pendingKey) confirm(lang::tr("MESSAGE/KEYBINDS/EMPTY"), nullptr, nullptr);
         else {
             list[selected].keybind = pendingKey;
@@ -157,16 +142,18 @@ static gui::WindowContent s_keybindsUI("KEYBINDS", [] {
         }
     }
     if (gui::buttonRow("Reset All")) {
-        for (auto& h : list) h.keybind = 0;
-        config::markDirty();
+        confirm("Reset All?", [](void*) {
+            for (auto& h : hacks()) h.keybind = 0;
+            config::markDirty();
+        }, nullptr);
     }
     gui::checkboxRow(T("KEYBINDS/HACK_DISABLE_IN_EDITOR"), &config::ui().keybindsDisabledInEditor);
-    if (ImGui::TreeNode(T("KEYBINDS/VIEW"))) {
-        for (auto& h : list)
-            if (h.keybind) ImGui::Text("%s: %s", gui::keyName(h.keybind).c_str(), T(h.id));
-        ImGui::TreePop();
+    // elenco dei tasti assegnati
+    for (auto& h : list) {
+        if (!h.keybind) continue;
+        std::string t = gui::keyName(h.keybind) + "  " + lang::tr(h.id);
+        gui::labelRow(t.c_str());
     }
-    ImGui::PopStyleVar(2);
 }, true);
 
 // ================================================================== GM_VAR (variabili di gioco)
@@ -175,7 +162,7 @@ struct GmVar {
     const char* key;
     const char* label;
 };
-// Variabili di GameManager note (alcune dal file di lingua, le altre con nome descrittivo)
+// Le prime quattro vengono dal file di lingua di Mega Hack, le altre sono impostazioni note di GD
 const GmVar kVars[] = {
     {"0060", "GM_VAR/0060"}, {"0061", "GM_VAR/0061"}, {"0062", "GM_VAR/0062"}, {"0096", "GM_VAR/0096"},
     {"0024", "Show Cursor In-Game"}, {"0026", "Auto-Retry"}, {"0027", "Auto-Checkpoints"}, {"0040", "Show Percentage"},
@@ -185,31 +172,23 @@ const GmVar kVars[] = {
     {"0135", "Hide Attempts in Practice"}, {"0166", "Show Hitboxes in Practice"}, {"0168", "Fast Menu"},
     {"0174", "Hide Playtest Text"},
 };
+constexpr int kVarCount = static_cast<int>(sizeof(kVars) / sizeof(kVars[0]));
 int s_varSel = 0;
+std::string varLabel(int i) {
+    std::string name = lang::has(kVars[i].label) ? lang::tr(kVars[i].label) : std::string(kVars[i].label);
+    return std::string(kVars[i].key) + " " + name;
+}
 } // namespace
 
 static gui::WindowContent s_varsUI("GM_VAR", [] {
-    float s = config::ui().scale;
-    float w = ImGui::GetContentRegionAvail().x;
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6 * s, 4 * s));
-    ImGui::PushItemWidth(w);
-    const int n = static_cast<int>(sizeof(kVars) / sizeof(kVars[0]));
-    auto label = [](int i) {
-        static std::string tmp;
-        tmp = std::string(kVars[i].key) + " " + (lang::has(kVars[i].label) ? lang::tr(kVars[i].label) : std::string(kVars[i].label));
-        return tmp.c_str();
-    };
-    if (ImGui::BeginCombo("##gmvar", label(s_varSel))) {
-        for (int i = 0; i < n; i++)
-            if (ImGui::Selectable(label(i), i == s_varSel)) s_varSel = i;
+    if (gui::beginComboRow("##gmvar", varLabel(s_varSel).c_str())) {
+        for (int i = 0; i < kVarCount; i++)
+            if (ImGui::Selectable(varLabel(i).c_str(), i == s_varSel)) s_varSel = i;
         ImGui::EndCombo();
     }
-    ImGui::PopItemWidth();
-    ImGui::PopStyleVar();
     if (!gd::gameManager()) return;
     bool v = gd::getGameVar(kVars[s_varSel].key);
     if (gui::checkboxRow(v ? "Enabled" : "Disabled", &v)) gd::setGameVar(kVars[s_varSel].key, v);
-    // le quattro variabili del file di lingua sempre visibili
     for (int i = 0; i < 4; i++) {
         bool cur = gd::getGameVar(kVars[i].key);
         if (gui::checkboxRow(T(kVars[i].label), &cur)) gd::setGameVar(kVars[i].key, cur);
@@ -218,9 +197,5 @@ static gui::WindowContent s_varsUI("GM_VAR", [] {
 
 // ================================================================== FAVOURITES
 static gui::WindowContent s_favUI("FAVOURITES", [] {
-    if (gui::favourites().empty()) {
-        ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x);
-        ImGui::TextDisabled("  Tasto destro su una funzione -> + Favourite");
-        ImGui::PopTextWrapPos();
-    }
+    if (gui::favourites().empty()) gui::labelRow("Tasto destro -> + Favourites");
 });

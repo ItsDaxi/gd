@@ -105,13 +105,14 @@ void load() {
     if (j.contains("favourites")) {
         for (auto& id : j["favourites"]) gui::favourites().push_back(id.get<std::string>());
     }
-    if (j.contains("windows")) {
+    // layout v2: le posizioni salvate con la versione precedente (layout sbagliato) vengono ignorate
+    if (j.value("layout", 0) == 2 && j.contains("windows")) {
         for (auto& [name, w] : j["windows"].items()) {
             auto& st = gui::windowState(name);
             st.x = w.value("x", st.x);
             st.y = w.value("y", st.y);
             st.collapsed = w.value("collapsed", st.collapsed);
-            st.placed = true;
+            st.userMoved = w.value("moved", false);
         }
     }
     MH_LOG("config caricato");
@@ -147,8 +148,9 @@ void save() {
         if (h.keybind) j["keybinds"][h.id] = h.keybind;
     }
     j["favourites"] = gui::favourites();
+    j["layout"] = 2;
     for (auto& [name, st] : gui::windowStates()) {
-        j["windows"][name] = {{"x", st.x}, {"y", st.y}, {"collapsed", st.collapsed}};
+        j["windows"][name] = {{"x", st.x}, {"y", st.y}, {"collapsed", st.collapsed}, {"moved", st.userMoved}};
     }
     auto path = paths::dataDir() / "config.json";
     auto tmp = path;

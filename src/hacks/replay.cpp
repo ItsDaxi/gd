@@ -79,16 +79,8 @@ Hack& play = hack("REPLAY", "REPLAY/STATE/PLAY").isCheat();
 std::string s_error;
 
 void replayUI() {
-    float s = config::ui().scale;
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4 * s, 4 * s));
-    ImGui::Dummy(ImVec2(0, 2 * s));
-    ImGui::Indent(4 * s);
-    float w = ImGui::GetContentRegionAvail().x - 4 * s;
-    char buf[128];
-    snprintf(buf, sizeof(buf), "%s", s_fileName.c_str());
-    ImGui::PushItemWidth(w);
-    if (ImGui::InputTextWithHint("##macroname", T("NX/PICKER/INPUT"), buf, sizeof(buf))) s_fileName = buf;
-    if (ImGui::BeginCombo("##macrofile", s_loadedName.empty() ? T("REPLAY/NONE") : s_loadedName.c_str())) {
+    gui::inputRow("##macroname", T("NX/PICKER/INPUT"), &s_fileName);
+    if (gui::beginComboRow("##macrofile", s_loadedName.empty() ? T("REPLAY/NONE") : s_loadedName.c_str())) {
         std::error_code ec;
         bool any = false;
         for (auto& e : std::filesystem::directory_iterator(replayDir(), ec)) {
@@ -103,18 +95,16 @@ void replayUI() {
         if (!any) ImGui::TextDisabled("%s", T("NX/PICKER/EMPTY"));
         ImGui::EndCombo();
     }
-    ImGui::PopItemWidth();
-    float half = (w - 4 * s) * 0.5f;
-    if (ImGui::Button(T("REPLAY/SAVE"), ImVec2(half, 0))) {
+    int r = gui::buttonPair(T("REPLAY/SAVE"), T("REPLAY/OPEN"));
+    if (r == 1) {
         if (s_fileName.empty()) s_error = lang::tr("ERROR/REPLAY/EMPTY_FILENAME");
         else if (s_inputs.empty()) s_error = lang::tr("ERROR/REPLAY/NO_INPUTS");
         else saveMacro(s_fileName);
-    }
-    ImGui::SameLine();
-    if (ImGui::Button(T("REPLAY/OPEN"), ImVec2(half, 0))) {
+    } else if (r == 2) {
         if (!loadMacro(replayDir() / (s_fileName + ".json"))) s_error = lang::tr("ERROR/REPLAY/FILE_NOT_FOUND");
     }
-    if (ImGui::Button(T("REPLAY/END_LAYOUT/CLEAR"), ImVec2(half, 0))) {
+    r = gui::buttonPair(T("REPLAY/END_LAYOUT/CLEAR"), T("REPLAY/DELETE"));
+    if (r == 1) {
         if (s_dirty) {
             confirm(lang::tr("MESSAGE/REPLAY/CONFIRM_CLEAR"), [](void*) {
                 s_inputs.clear();
@@ -125,38 +115,29 @@ void replayUI() {
             s_inputs.clear();
             s_loadedName.clear();
         }
-    }
-    ImGui::SameLine();
-    if (ImGui::Button(T("REPLAY/DELETE"), ImVec2(half, 0)) && !s_loadedName.empty()) {
+    } else if (r == 2 && !s_loadedName.empty()) {
         confirm(lang::tr("MESSAGE/REPLAY/CONFIRM_DELETE"), [](void*) {
             std::error_code ec;
             std::filesystem::remove(replayDir() / (s_loadedName + ".json"), ec);
             s_loadedName.clear();
         }, nullptr);
     }
-    if (ImGui::Checkbox(T("REPLAY/SAVE_LAYOUT/AUTO_SAVE"), &s_autoSave)) config::markDirty();
-    ImGui::TextDisabled("%s", T("REPLAY/GAMEPLAY"));
-    if (ImGui::Checkbox(T("REPLAY/GAMEPLAY/ALLOW_RANDOMNESS"), &s_allowRandom)) config::markDirty();
-    if (ImGui::Checkbox(T("REPLAY/GAMEPLAY/BLOCK_INPUTS"), &s_blockInputs)) config::markDirty();
-    if (ImGui::Button(T("REPLAY/CONVERT"), ImVec2(w, 0))) {
+    gui::checkboxRow(T("REPLAY/SAVE_LAYOUT/AUTO_SAVE"), &s_autoSave);
+    gui::checkboxRow(T("REPLAY/GAMEPLAY/ALLOW_RANDOMNESS"), &s_allowRandom);
+    gui::checkboxRow(T("REPLAY/GAMEPLAY/BLOCK_INPUTS"), &s_blockInputs);
+    if (gui::buttonRow(T("REPLAY/CONVERT"))) {
         // .gdr in formato JSON: {"inputs":[{"frame":..,"btn":..,"2p":..,"down":..}]}
         auto src = replayDir() / (s_fileName + ".gdr.json");
         if (!std::filesystem::exists(src)) src = replayDir() / (s_fileName + ".gdr");
         if (loadMacro(src) && saveMacro(s_fileName + "_converted")) s_error = lang::tr("MESSAGE/REPLAY/CONVERT_SUCCESS");
         else s_error = lang::tr("ERROR/REPLAY/FILE_NOT_FOUND") + " (.gdr JSON)";
     }
-    if (ImGui::Button(T("REPLAY/OPEN_DIR"), ImVec2(w, 0)))
+    if (gui::buttonRow(T("REPLAY/OPEN_DIR")))
         ShellExecuteW(nullptr, L"open", replayDir().c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-    ImGui::Text("%zu inputs", s_inputs.size());
-    if (!s_error.empty()) {
-        ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + w);
-        ImGui::TextColored(ImVec4(1, 0.6f, 0.3f, 1), "%s", s_error.c_str());
-        ImGui::PopTextWrapPos();
-        if (ImGui::IsItemClicked()) s_error.clear();
-    }
-    ImGui::Unindent(4 * s);
-    ImGui::Dummy(ImVec2(0, 2 * s));
-    ImGui::PopStyleVar();
+    char info[64];
+    snprintf(info, sizeof(info), "%zu inputs", s_inputs.size());
+    gui::labelRow(info);
+    if (!s_error.empty() && gui::buttonRow(s_error.c_str())) s_error.clear();
 }
 
 [[maybe_unused]] bool s_init = [] {

@@ -12,6 +12,7 @@ bool initialized();
 // Prossimo tasto premuto (per assegnare keybind); -1 = nessuno in attesa
 void beginKeyCapture(int* target);
 bool capturingKey();
+bool capturing(const int* target);
 
 // Stato input (aggiornato dalla WndProc)
 bool keyDown(int vk);

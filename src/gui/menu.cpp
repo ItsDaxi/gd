@@ -11,17 +11,17 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <cstring>
 #include <windows.h>
 
 namespace mh::gui {
 
 std::string g_search;
 static bool g_open = false;
-static float g_alpha = 0.f;
+static float g_anim = 0.f; // 0 = chiuso, 1 = aperto (avanza linearmente in animMs)
 static std::map<std::string, WindowState> g_windows;
-static std::map<std::string, float> g_heights;
+static std::map<std::string, float> g_contentH; // altezza misurata del contenuto di ogni finestra
 static std::vector<std::string> g_favourites;
-static bool g_needSort = false;
 
 WindowState& windowState(const std::string& name) { return g_windows[name]; }
 std::map<std::string, WindowState>& windowStates() { return g_windows; }
@@ -32,7 +32,13 @@ bool isFavourite(const std::string& id) {
 
 bool menuOpen() { return g_open; }
 void toggleMenu() { g_open = !g_open; }
-void sortWindows() { g_needSort = true; }
+void sortWindows() {
+    for (auto& [_, st] : g_windows) {
+        st.userMoved = false;
+        st.collapsed = false;
+    }
+    config::markDirty();
+}
 
 // ------------------------------------------------------------ registrazioni
 struct ContentEntry {
@@ -107,7 +113,7 @@ static std::string lower(std::string s) {
 }
 
 static const std::string& hackName(const Hack& h) {
-    if (!h.displayName.empty() && !lang::has(h.id)) return h.displayName;
+    if (!h.displayName.empty()) return h.displayName;
     return lang::tr(h.id);
 }
 
@@ -117,13 +123,41 @@ static bool matchesSearch(const Hack& h) {
 }
 
 static float S(float v) { return v * config::ui().scale; }
+float rowHeight() { return S(24); }
+
+static void rowBackground(ImVec2 p, float w, float h, bool hovered, bool held = false) {
+    auto* dl = ImGui::GetWindowDrawList();
+    ImVec4 c = held ? ImVec4(accent().x, accent().y, accent().z, 0.35f) : hovered ? rowHover() : rowColor();
+    dl->AddRectFilled(p, ImVec2(p.x + w, p.y + h), ImGui::GetColorU32(c));
+    dl->AddLine(ImVec2(p.x, p.y + h - 1), ImVec2(p.x + w, p.y + h - 1), ImGui::GetColorU32(ImVec4(0, 0, 0, 0.25f)));
+}
+
+// Stile comune per i widget ImGui dentro le righe: altezza = riga, nessuno spazio tra le righe
+struct RowStyle {
+    RowStyle() {
+        float fh = ImGui::GetFontSize();
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(S(7), std::max(0.f, (rowHeight() - fh) * 0.5f)));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.f);
+        ImGui::PushStyleColor(ImGuiCol_FrameBg, rowColor());
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, rowHover());
+        ImGui::PushStyleColor(ImGuiCol_FrameBgActive, rowHover());
+        ImGui::PushStyleColor(ImGuiCol_Button, rowColor());
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, rowHover());
+    }
+    ~RowStyle() {
+        ImGui::PopStyleColor(5);
+        ImGui::PopStyleVar(4);
+    }
+};
 
 // ------------------------------------------------------------ widget
-static bool rowBase(const char* id, const char* label, bool active, bool hasOptions, bool* openOptions,
-                    bool dot = true) {
+static bool rowBase(const char* id, const char* label, bool active, bool hasOptions, bool* openOptions, bool dot = true,
+                    bool dim = false) {
     auto* dl = ImGui::GetWindowDrawList();
     float w = ImGui::GetContentRegionAvail().x;
-    float h = S(24);
+    float h = rowHeight();
     ImVec2 p = ImGui::GetCursorScreenPos();
     ImGui::PushID(id);
     bool clicked = ImGui::InvisibleButton("##row", ImVec2(w, h), ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
@@ -133,12 +167,9 @@ static bool rowBase(const char* id, const char* label, bool active, bool hasOpti
 
     float optW = hasOptions ? S(18) : 0;
     bool onArrow = hasOptions && hovered && ImGui::GetIO().MousePos.x > p.x + w - optW;
-    ImU32 bg = ImGui::GetColorU32(hovered ? rowHover() : rowColor());
-    dl->AddRectFilled(p, ImVec2(p.x + w, p.y + h), bg);
-    // separatore sottile tra le righe
-    dl->AddLine(ImVec2(p.x, p.y + h - 1), ImVec2(p.x + w, p.y + h - 1), ImGui::GetColorU32(ImVec4(0, 0, 0, 0.25f)));
+    rowBackground(p, w, h, hovered);
 
-    ImU32 txt = ImGui::GetColorU32(active ? accent() : textColor());
+    ImU32 txt = ImGui::GetColorU32(active ? accent() : dim ? dimText() : textColor());
     ImVec2 ts = ImGui::CalcTextSize(label);
     dl->PushClipRect(p, ImVec2(p.x + w - optW - S(8), p.y + h), true);
     dl->AddText(ImVec2(p.x + S(7), p.y + (h - ts.y) * 0.5f), txt, label);
@@ -171,30 +202,100 @@ bool checkboxRow(const char* label, bool* v) {
     return clicked;
 }
 
-bool buttonRow(const char* label) {
+static bool centeredButton(const char* label, float w, bool active) {
     auto* dl = ImGui::GetWindowDrawList();
-    float w = ImGui::GetContentRegionAvail().x;
-    float h = S(24);
+    float h = rowHeight();
     ImVec2 p = ImGui::GetCursorScreenPos();
     ImGui::PushID(label);
     bool clicked = ImGui::InvisibleButton("##btn", ImVec2(w, h));
     bool hovered = ImGui::IsItemHovered();
     bool held = ImGui::IsItemActive();
     ImGui::PopID();
-    dl->AddRectFilled(p, ImVec2(p.x + w, p.y + h), ImGui::GetColorU32(held ? ImVec4(accent().x, accent().y, accent().z, 0.4f) : hovered ? rowHover() : rowColor()));
-    dl->AddLine(ImVec2(p.x, p.y + h - 1), ImVec2(p.x + w, p.y + h - 1), ImGui::GetColorU32(ImVec4(0, 0, 0, 0.25f)));
-    ImVec2 ts = ImGui::CalcTextSize(label);
-    dl->AddText(ImVec2(p.x + (w - ts.x) * 0.5f, p.y + (h - ts.y) * 0.5f), ImGui::GetColorU32(textColor()), label);
+    rowBackground(p, w, h, hovered, held);
+    // nome visibile = testo prima di "##"
+    const char* end = strstr(label, "##");
+    ImVec2 ts = ImGui::CalcTextSize(label, end);
+    dl->PushClipRect(p, ImVec2(p.x + w, p.y + h), true);
+    dl->AddText(ImVec2(p.x + std::max(S(4), (w - ts.x) * 0.5f), p.y + (h - ts.y) * 0.5f),
+                ImGui::GetColorU32(active ? accent() : textColor()), label, end);
+    dl->PopClipRect();
     return clicked;
 }
 
+bool buttonRow(const char* label, bool active) { return centeredButton(label, ImGui::GetContentRegionAvail().x, active); }
+
+int buttonPair(const char* a, const char* b, bool activeA, bool activeB) {
+    float w = ImGui::GetContentRegionAvail().x;
+    float half = std::floor(w * 0.5f);
+    int r = 0;
+    if (centeredButton(a, half, activeA)) r = 1;
+    ImGui::SameLine(0, 0);
+    if (centeredButton(b, w - half, activeB)) r = 2;
+    return r;
+}
+
 void keyButton(const char* label, int* vk) {
-    std::string text = capturingKey() ? std::string("...") : keyName(*vk);
-    ImGui::TextUnformatted(label);
-    ImGui::SameLine();
-    ImGui::PushID(label);
-    if (ImGui::Button(text.c_str(), ImVec2(-1, 0))) beginKeyCapture(vk);
+    std::string text = std::string(label) + ": " + (capturing(vk) ? std::string("...") : keyName(*vk));
+    ImGui::PushID(vk);
+    if (centeredButton(text.c_str(), ImGui::GetContentRegionAvail().x, capturing(vk))) beginKeyCapture(vk);
     ImGui::PopID();
+}
+
+static void sliderFill(float t) {
+    ImVec2 a = ImGui::GetItemRectMin(), b = ImGui::GetItemRectMax();
+    t = std::clamp(t, 0.f, 1.f);
+    ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(a.x, b.y - S(3)), ImVec2(a.x + (b.x - a.x) * t, b.y - S(1)), accentU32(0.8f));
+}
+
+bool sliderIntRow(const char* id, int* v, int mn, int mx, const char* fmt) {
+    RowStyle rs;
+    ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0, 0, 0, 0));
+    ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0, 0, 0, 0));
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    bool c = ImGui::SliderInt(id, v, mn, mx, fmt, ImGuiSliderFlags_AlwaysClamp);
+    ImGui::PopStyleColor(2);
+    sliderFill(mx > mn ? static_cast<float>(*v - mn) / static_cast<float>(mx - mn) : 0.f);
+    if (c) config::markDirty();
+    return c;
+}
+
+bool sliderFloatRow(const char* id, float* v, float mn, float mx, const char* fmt) {
+    RowStyle rs;
+    ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0, 0, 0, 0));
+    ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, ImVec4(0, 0, 0, 0));
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    bool c = ImGui::SliderFloat(id, v, mn, mx, fmt, ImGuiSliderFlags_AlwaysClamp);
+    ImGui::PopStyleColor(2);
+    sliderFill(mx > mn ? (*v - mn) / (mx - mn) : 0.f);
+    if (c) config::markDirty();
+    return c;
+}
+
+bool inputRow(const char* id, const char* hint, std::string* value) {
+    RowStyle rs;
+    char buf[256];
+    snprintf(buf, sizeof(buf), "%s", value->c_str());
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    if (ImGui::InputTextWithHint(id, hint, buf, sizeof(buf))) {
+        *value = buf;
+        return true;
+    }
+    return false;
+}
+
+bool beginComboRow(const char* id, const char* preview) {
+    RowStyle rs;
+    ImGui::SetNextItemWidth(-FLT_MIN);
+    return ImGui::BeginCombo(id, preview, ImGuiComboFlags_HeightLarge);
+}
+
+void labelRow(const char* text) {
+    float w = ImGui::GetContentRegionAvail().x;
+    ImVec2 p = ImGui::GetCursorScreenPos();
+    ImGui::Dummy(ImVec2(w, rowHeight()));
+    rowBackground(p, w, rowHeight(), false);
+    ImVec2 ts = ImGui::CalcTextSize(text);
+    ImGui::GetWindowDrawList()->AddText(ImVec2(p.x + S(7), p.y + (rowHeight() - ts.y) * 0.5f), ImGui::GetColorU32(dimText()), text);
 }
 
 static void tooltip(const Hack& h) {
@@ -215,20 +316,30 @@ static void drawOption(Option& o) {
     const char* label = T(o.label);
     bool changed = false;
     ImGui::PushID(o.key.empty() ? o.label.c_str() : o.key.c_str());
-    ImGui::PushItemWidth(S(150));
+    float w = S(220);
     switch (o.type) {
     case OptType::Bool: changed = ImGui::Checkbox(label, static_cast<bool*>(o.ptr)); break;
-    case OptType::Int:
-        changed = ImGui::DragInt(label, static_cast<int*>(o.ptr), 0.25f, static_cast<int>(o.min), static_cast<int>(o.max), o.fmt ? o.fmt : "%d", ImGuiSliderFlags_AlwaysClamp);
+    case OptType::Int: {
+        ImGui::TextUnformatted(label);
+        ImGui::SetNextItemWidth(w);
+        changed = ImGui::SliderInt("##v", static_cast<int*>(o.ptr), static_cast<int>(o.min), static_cast<int>(o.max),
+                                   o.fmt ? o.fmt : "%d", ImGuiSliderFlags_AlwaysClamp);
         break;
-    case OptType::Float:
-        changed = ImGui::DragFloat(label, static_cast<float*>(o.ptr), (o.max - o.min) / 400.f, o.min, o.max, o.fmt ? o.fmt : "%.2f", ImGuiSliderFlags_AlwaysClamp);
+    }
+    case OptType::Float: {
+        ImGui::TextUnformatted(label);
+        ImGui::SetNextItemWidth(w);
+        changed = ImGui::SliderFloat("##v", static_cast<float*>(o.ptr), o.min, o.max, o.fmt ? o.fmt : "%.2f",
+                                     ImGuiSliderFlags_AlwaysClamp);
         break;
+    }
     case OptType::Text: {
         auto* s = static_cast<std::string*>(o.ptr);
         char buf[256];
         snprintf(buf, sizeof(buf), "%s", s->c_str());
-        if (ImGui::InputText(label, buf, sizeof(buf))) {
+        ImGui::TextUnformatted(label);
+        ImGui::SetNextItemWidth(w);
+        if (ImGui::InputText("##v", buf, sizeof(buf))) {
             *s = buf;
             changed = true;
         }
@@ -238,7 +349,9 @@ static void drawOption(Option& o) {
         int* v = static_cast<int*>(o.ptr);
         int n = static_cast<int>(o.items.size());
         const char* preview = (*v >= 0 && *v < n) ? T(o.items[*v]) : "";
-        if (ImGui::BeginCombo(label, preview)) {
+        ImGui::TextUnformatted(label);
+        ImGui::SetNextItemWidth(w);
+        if (ImGui::BeginCombo("##v", preview, ImGuiComboFlags_HeightLarge)) {
             for (int i = 0; i < n; i++) {
                 if (ImGui::Selectable(T(o.items[i]), *v == i)) {
                     *v = i;
@@ -249,16 +362,20 @@ static void drawOption(Option& o) {
         }
         break;
     }
-    case OptType::Key: keyButton(label, static_cast<int*>(o.ptr)); break;
+    case OptType::Key: {
+        int* vk = static_cast<int*>(o.ptr);
+        std::string t = std::string(label) + ": " + (capturing(vk) ? std::string("...") : keyName(*vk));
+        if (ImGui::Button(t.c_str(), ImVec2(w, 0))) beginKeyCapture(vk);
+        break;
+    }
     case OptType::Color:
         changed = ImGui::ColorEdit4(label, static_cast<float*>(o.ptr), ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaBar);
         break;
     case OptType::Button:
-        if (ImGui::Button(label, ImVec2(S(150), 0)) && o.onClick) o.onClick();
+        if (ImGui::Button(label, ImVec2(w, 0)) && o.onClick) o.onClick();
         break;
     case OptType::Label: ImGui::TextDisabled("%s", label); break;
     }
-    ImGui::PopItemWidth();
     ImGui::PopID();
     if (changed) {
         config::markDirty();
@@ -267,45 +384,39 @@ static void drawOption(Option& o) {
 }
 
 static void optionsPopup(Hack& h) {
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(S(8), S(8)));
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(S(6), S(5)));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(S(10), S(10)));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(S(6), S(6)));
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(S(6), S(4)));
     if (ImGui::BeginPopup(("opts_" + h.id).c_str())) {
         ImGui::TextColored(titleAccent(), "%s", hackName(h).c_str());
         ImGui::Separator();
         const auto& tip = lang::tip(h.id);
-        if (!tip.empty()) {
-            ImGui::PushTextWrapPos(S(300));
-            ImGui::TextDisabled("%s", tip.c_str());
-            ImGui::PopTextWrapPos();
-        }
-        if (!h.extraTip.empty()) {
-            ImGui::PushTextWrapPos(S(300));
-            ImGui::TextColored(ImVec4(1, 0.75f, 0.3f, 1), "%s", h.extraTip.c_str());
-            ImGui::PopTextWrapPos();
-        }
+        ImGui::PushTextWrapPos(S(300));
+        if (!tip.empty()) ImGui::TextDisabled("%s", tip.c_str());
+        if (!h.extraTip.empty()) ImGui::TextColored(ImVec4(1, 0.75f, 0.3f, 1), "%s", h.extraTip.c_str());
+        ImGui::PopTextWrapPos();
         for (auto& o : h.options) drawOption(o);
         if (h.customUI) h.customUI();
         ImGui::Separator();
-        keyButton(T("KEYBINDS/SHORTCUT"), &h.keybind);
+        std::string kb = std::string(T("KEYBINDS/SHORTCUT")) + ": " + (capturing(&h.keybind) ? std::string("...") : keyName(h.keybind));
+        if (ImGui::Button(kb.c_str(), ImVec2(S(220), 0))) beginKeyCapture(&h.keybind);
         bool fav = isFavourite(h.id);
-        if (ImGui::Button(fav ? "- Favourite" : "+ Favourite", ImVec2(-1, 0))) {
+        if (ImGui::Button(fav ? "- Favourites" : "+ Favourites", ImVec2(S(220), 0))) {
             if (fav) g_favourites.erase(std::remove(g_favourites.begin(), g_favourites.end(), h.id), g_favourites.end());
             else g_favourites.push_back(h.id);
             config::markDirty();
         }
         ImGui::EndPopup();
     }
-    ImGui::PopStyleVar(2);
+    ImGui::PopStyleVar(3);
 }
 
 bool hackRow(Hack& h) {
-    bool hasOptions = true; // keybind e preferiti sono sempre disponibili
     bool openOpts = false;
-    std::string label = hackName(h);
-    if (h.notice) label += " *";
-    bool clicked = rowBase(h.id.c_str(), label.c_str(), h.enabled, hasOptions && (!h.options.empty() || h.customUI), &openOpts, !h.button);
+    const std::string& label = hackName(h);
+    bool hasOptions = !h.options.empty() || h.customUI;
+    bool clicked = rowBase(h.id.c_str(), label.c_str(), h.enabled, hasOptions, &openOpts, !h.button, h.unavailable);
     tooltip(h);
-    if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) openOpts = true;
     if (openOpts) ImGui::OpenPopup(("opts_" + h.id).c_str());
     if (clicked) {
         h.set(!h.enabled);
@@ -326,66 +437,134 @@ static std::vector<Hack*> hacksFor(const std::string& window) {
     }
     for (auto& h : hacks())
         if (h.window == window && matchesSearch(h)) out.push_back(&h);
-    std::sort(out.begin(), out.end(), [](Hack* a, Hack* b) { return lower(hackName(*a)) < lower(hackName(*b)); });
+    std::sort(out.begin(), out.end(), [](Hack* a, Hack* b) {
+        // le funzioni non disponibili vanno in fondo
+        if (a->unavailable != b->unavailable) return b->unavailable;
+        return lower(hackName(*a)) < lower(hackName(*b));
+    });
     return out;
 }
 
-static void layoutDefault(const std::vector<std::string>& windows) {
-    float x = S(8), y = S(8);
-    float maxH = ImGui::GetIO().DisplaySize.y - S(8);
-    float colW = S(200) + S(6);
-    for (auto& name : windows) {
-        float h = g_heights.count(name) ? g_heights[name] : S(24) * 6;
-        if (y > S(8) && y + h > maxH) {
-            x += colW;
-            y = S(8);
+static bool hasCustom(const std::string& name) {
+    for (auto& c : contents())
+        if (c.window == name) return true;
+    return false;
+}
+
+static bool windowVisible(const std::string& name, size_t rows) {
+    if (!g_search.empty()) return rows > 0 || name == "HOME";
+    return rows > 0 || hasCustom(name);
+}
+
+static float titleHeight() { return S(24); }
+
+static float estimatedHeight(const std::string& name, size_t rows) {
+    auto& st = g_windows[name];
+    if (st.collapsed) return titleHeight();
+    auto it = g_contentH.find(name);
+    float content = it != g_contentH.end() ? it->second : rows * rowHeight() + (hasCustom(name) ? S(24) * 6 : 0);
+    return titleHeight() + content;
+}
+
+// Disposizione predefinita a colonne, come nell'immagine di Mega Hack
+static const std::vector<std::vector<std::string>>& presetColumns() {
+    static const std::vector<std::vector<std::string>> cols = {
+        {"BYPASS", "CHEAT_SAFETY", "INTERFACE", "SCREENSHOT"},
+        {"COSMETIC"},
+        {"CREATOR", "REPLAY"},
+        {"LEVEL"},
+        {"UNIVERSAL", "DISPLAY", "SPEEDHACK", "GM_VAR"},
+        {"STATUS", "UTILITY"},
+        {"ICONIC", "HOME", "KEYBINDS", "FAVOURITES"},
+    };
+    return cols;
+}
+
+static void autoLayout(const std::map<std::string, size_t>& rows) {
+    auto& io = ImGui::GetIO();
+    float margin = S(6), gap = S(6), w = S(200);
+    float screenH = io.DisplaySize.y - margin * 2;
+    auto cols = presetColumns();
+    int maxCols = std::max(1, static_cast<int>((io.DisplaySize.x - margin) / (w + gap)));
+    if (static_cast<int>(cols.size()) > maxCols) {
+        // schermo stretto: ridistribuisce le finestre nelle colonne disponibili
+        std::vector<std::string> flat;
+        for (auto& c : cols) flat.insert(flat.end(), c.begin(), c.end());
+        cols.assign(maxCols, {});
+        size_t per = (flat.size() + maxCols - 1) / maxCols;
+        for (size_t i = 0; i < flat.size(); i++) cols[std::min(i / per, cols.size() - 1)].push_back(flat[i]);
+    }
+    for (size_t c = 0; c < cols.size(); c++) {
+        std::vector<std::string> vis;
+        for (auto& n : cols[c]) {
+            auto it = rows.find(n);
+            if (windowVisible(n, it == rows.end() ? 0 : it->second)) vis.push_back(n);
         }
-        auto& st = g_windows[name];
-        st.x = x;
-        st.y = y;
-        st.placed = true;
-        y += std::min(h, maxH - S(8)) + S(6);
+        if (vis.empty()) continue;
+        // "water filling": le finestre corte prendono la loro altezza, le lunghe si dividono il resto
+        float avail = screenH - gap * static_cast<float>(vis.size() - 1);
+        std::vector<float> want(vis.size()), got(vis.size(), 0.f);
+        for (size_t i = 0; i < vis.size(); i++) want[i] = estimatedHeight(vis[i], rows.count(vis[i]) ? rows.at(vis[i]) : 0);
+        std::vector<size_t> order(vis.size());
+        for (size_t i = 0; i < order.size(); i++) order[i] = i;
+        std::sort(order.begin(), order.end(), [&](size_t a, size_t b) { return want[a] < want[b]; });
+        float left = avail;
+        for (size_t k = 0; k < order.size(); k++) {
+            float share = left / static_cast<float>(order.size() - k);
+            size_t i = order[k];
+            got[i] = std::max(titleHeight() + rowHeight() * 3, std::min(want[i], share));
+            left -= got[i];
+        }
+        float y = margin;
+        for (size_t i = 0; i < vis.size(); i++) {
+            auto& st = g_windows[vis[i]];
+            st.maxH = got[i];
+            if (!st.userMoved) {
+                st.x = margin + static_cast<float>(c) * (w + gap);
+                st.y = y;
+            }
+            y += got[i] + gap;
+        }
     }
 }
 
-static void drawWindow(const std::string& name) {
-    auto list = hacksFor(name);
-    bool hasBefore = false, hasAfter = false;
-    for (auto& c : contents()) {
-        if (c.window != name) continue;
-        (c.before ? hasBefore : hasAfter) = true;
-    }
-    if (!g_search.empty() && list.empty() && name != "HOME") return;
-    if (list.empty() && !hasBefore && !hasAfter && name != "FAVOURITES") return;
-
+static void drawWindow(const std::string& name, const std::vector<Hack*>& list, float slide) {
+    if (!windowVisible(name, list.size())) return;
     auto& st = g_windows[name];
+    auto& io = ImGui::GetIO();
     float width = S(200);
-    ImGui::SetNextWindowPos(ImVec2(st.x, st.y), g_needSort ? ImGuiCond_Always : ImGuiCond_Once);
-    ImGui::SetNextWindowSizeConstraints(ImVec2(width, 0), ImVec2(width, ImGui::GetIO().DisplaySize.y - S(16)));
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize |
-                             ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings;
+    float th = titleHeight();
+    float maxH = st.userMoved || st.maxH <= 0 ? io.DisplaySize.y - st.y - S(6) : st.maxH;
+    maxH = std::max(maxH, th + rowHeight() * 2);
+    float content = estimatedHeight(name, list.size()) - th;
+    float height = st.collapsed ? th : std::min(th + content, maxH);
+
+    ImGui::SetNextWindowPos(ImVec2(st.x, st.y + slide), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(width, height), ImGuiCond_Always);
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar |
+                             ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse |
+                             ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMove;
     std::string wid = "##mh_" + name;
     if (!ImGui::Begin(wid.c_str(), nullptr, flags)) {
         ImGui::End();
         return;
     }
-    auto pos = ImGui::GetWindowPos();
-    st.x = pos.x;
-    st.y = pos.y;
 
-    // barra del titolo
+    // barra del titolo: trascinando si sposta la finestra, "-" la chiude
     auto* dl = ImGui::GetWindowDrawList();
     ImVec2 p = ImGui::GetCursorScreenPos();
-    float th = S(24);
     ImGui::InvisibleButton("##title", ImVec2(width, th));
     bool titleHovered = ImGui::IsItemHovered();
-    if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-        auto d = ImGui::GetIO().MouseDelta;
-        ImGui::SetWindowPos(ImVec2(pos.x + d.x, pos.y + d.y));
+    if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left, 2.f)) {
+        st.x += io.MouseDelta.x;
+        st.y += io.MouseDelta.y;
+        st.x = std::clamp(st.x, 0.f, io.DisplaySize.x - width);
+        st.y = std::clamp(st.y, 0.f, io.DisplaySize.y - th);
+        st.userMoved = true;
         config::markDirty();
     }
-    bool onCollapse = titleHovered && ImGui::GetIO().MousePos.x < p.x + S(24);
-    if (ImGui::IsItemDeactivated() && onCollapse && ImGui::GetIO().MouseDragMaxDistanceSqr[0] < 16.f) {
+    bool onCollapse = titleHovered && io.MousePos.x < p.x + S(24);
+    if (ImGui::IsItemDeactivated() && io.MouseDragMaxDistanceSqr[0] < 16.f && onCollapse) {
         st.collapsed = !st.collapsed;
         config::markDirty();
     }
@@ -398,48 +577,48 @@ static void drawWindow(const std::string& name) {
     dl->AddText(ImVec2(p.x + S(9), p.y + (th - ss.y) * 0.5f), onCollapse ? IM_COL32(255, 255, 255, 255) : IM_COL32(255, 255, 255, 190), sym);
 
     if (!st.collapsed) {
-        float maxH = ImGui::GetIO().DisplaySize.y - st.y - th - S(12);
-        float rows = static_cast<float>(list.size()) * S(24);
-        bool scroll = !hasBefore && !hasAfter && rows > maxH && maxH > S(48);
-        if (scroll) ImGui::BeginChild("##rows", ImVec2(width, maxH), ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar);
+        // contenuto in una child scrollabile con la rotella se non entra nell'altezza assegnata
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+        ImGui::BeginChild("##content", ImVec2(width, height - th), ImGuiChildFlags_None, ImGuiWindowFlags_None);
+        float startY = ImGui::GetCursorScreenPos().y;
         for (auto& c : contents())
             if (c.window == name && c.before) c.fn();
         for (auto* h : list) hackRow(*h);
         for (auto& c : contents())
             if (c.window == name && !c.before) c.fn();
-        if (scroll) ImGui::EndChild();
+        g_contentH[name] = ImGui::GetCursorScreenPos().y - startY;
+        ImGui::EndChild();
+        ImGui::PopStyleVar();
     }
-    g_heights[name] = ImGui::GetWindowHeight();
     ImGui::End();
 }
 
 void drawMenu() {
-    float target = g_open ? 1.f : 0.f;
-    float dt = ImGui::GetIO().DeltaTime;
-    float speed = config::ui().animMs > 0 ? 1000.f / static_cast<float>(config::ui().animMs) : 1000.f;
-    g_alpha += (target - g_alpha) * std::min(1.f, dt * speed * 1.5f);
-    if (std::abs(g_alpha - target) < 0.01f) g_alpha = target;
-    if (g_alpha <= 0.f) {
-        // menu chiuso: nessuna finestra deve tenere il focus della tastiera
-        if (ImGui::GetIO().WantCaptureKeyboard && !ImGui::GetIO().WantTextInput) ImGui::SetWindowFocus(nullptr);
-        return;
+    auto& io = ImGui::GetIO();
+    float ms = static_cast<float>(std::max(0, config::ui().animMs));
+    float step = ms > 0.f ? io.DeltaTime * 1000.f / ms : 1.f;
+    g_anim = std::clamp(g_anim + (g_open ? step : -step), 0.f, 1.f);
+    if (!g_open && (io.WantCaptureKeyboard || io.WantTextInput)) {
+        // menu chiuso: nessun campo/finestra deve tenere la tastiera, cosi' i tasti tornano al gioco
+        ImGui::ClearActiveID();
+        ImGui::SetWindowFocus(nullptr);
     }
+    if (g_anim <= 0.f) return;
+    // ease-out cubica: le finestre scendono dall'alto e compaiono in dissolvenza
+    float e = 1.f - std::pow(1.f - g_anim, 3.f);
+    float slide = (1.f - e) * -S(40);
 
-    std::vector<std::string> windows;
-    for (auto& name : windowOrder()) windows.push_back(name);
+    std::map<std::string, std::vector<Hack*>> lists;
+    std::map<std::string, size_t> rows;
+    for (auto& name : windowOrder()) {
+        lists[name] = hacksFor(name);
+        rows[name] = lists[name].size();
+    }
+    autoLayout(rows);
 
-    bool anyUnplaced = false;
-    for (auto& n : windows)
-        if (!g_windows[n].placed) anyUnplaced = true;
-    if (anyUnplaced || g_needSort) layoutDefault(windows);
-
-    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, g_alpha);
-    for (auto& name : windows) drawWindow(name);
+    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, e);
+    for (auto& name : windowOrder()) drawWindow(name, lists[name], slide);
     ImGui::PopStyleVar();
-    if (g_needSort) {
-        g_needSort = false;
-        config::markDirty();
-    }
 }
 
 } // namespace mh::gui

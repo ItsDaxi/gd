@@ -50,12 +50,16 @@ MH_ON(ev::plInit, [](void*) {
 
 static gui::WindowContent s_rulesetUI("CHEAT_SAFETY", [] {
     auto& ui = config::ui();
-    ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x);
-    const char* names[] = {T("*/RULESET*/0"), T("*/RULESET*/1"), T("*/RULESET*/2")};
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6, 4));
-    if (ImGui::Combo("##ruleset", &ui.ruleset, names, 3)) config::markDirty();
-    ImGui::PopStyleVar();
-    ImGui::PopItemWidth();
+    std::string preview = std::string(T("CHEAT_SAFETY/RULESET")) + ": " + T("*/RULESET*/" + std::to_string(ui.ruleset));
+    if (gui::beginComboRow("##ruleset", preview.c_str())) {
+        for (int i = 0; i < 3; i++) {
+            if (ImGui::Selectable(T("*/RULESET*/" + std::to_string(i)), ui.ruleset == i)) {
+                ui.ruleset = i;
+                config::markDirty();
+            }
+        }
+        ImGui::EndCombo();
+    }
 }, true);
 
 // ------------------------------------------------------------------ INTERFACE
