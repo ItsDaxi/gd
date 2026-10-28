@@ -29,7 +29,9 @@ struct Event {
 struct Sub {
     template <class E, class F>
     Sub(E& e, F f) {
-        e.add(+f);
+        // conversione esplicita: su MSVC "+lambda" puo' essere ambiguo (piu' convenzioni di chiamata)
+        using Fn = typename decltype(e.subs)::value_type;
+        e.add(static_cast<Fn>(f));
     }
 };
 
