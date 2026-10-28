@@ -1,6 +1,6 @@
 // Frame Extrapolation: GD aggiorna la fisica a 240 tick al secondo, quindi sopra i 240 fps alcuni frame
 // mostrano la stessa immagine. Qui, dopo ogni GJBaseGameLayer::update, giocatori e camera vengono
-// spostati in avanti della frazione di tick non ancora simulata (m_extraDelta) e rimessi al loro
+// spostati della frazione di tick non ancora simulata (m_extraDelta) e rimessi al loro
 // posto prima dell'update successivo, cosi' la fisica non cambia.
 #include "common.hpp"
 
@@ -87,9 +87,13 @@ MH_ON(ev::bglPostUpdate, [](void* layer, float) {
     }
     bool dead = GDF(nodes[0], PlayerObject, m_isDead, bool);
     if (dead || GDF(layer, PlayLayer, m_isPaused, bool)) return;
+    // GJBaseGameLayer::getModifiedDelta: tick = min(1, timeWarp) / 240, numero di tick arrotondato al
+    // piu' vicino, il resto (anche negativo, fino a mezzo tick) resta in m_extraDelta
     double extra = GDF(layer, GJBaseGameLayer, m_extraDelta, double);
-    if (!(extra > 0.0) || extra > 0.1) return;
-    float alpha = static_cast<float>(std::min(1.0, extra / kTick));
+    float warp = gameState<float>(layer, gd::off::GJGameState::m_timeWarp);
+    double tick = kTick * std::clamp(warp, 0.01f, 1.f);
+    if (!(std::abs(extra) <= tick)) return;
+    float alpha = static_cast<float>(extra / tick);
     bool dual = gameState<bool>(layer, gd::off::GJGameState::m_isDualMode);
     for (int i = 0; i < 3; i++) {
         auto& t = s_tracks[i];

@@ -1,7 +1,6 @@
 // CREATOR: Accurate Save, Smooth Editor Trail, Multiple Editor Trails, Object Trajectory
 #include "common.hpp"
 
-#include <climits>
 #include <cstdio>
 #include <cstdlib>
 #include <deque>
@@ -64,8 +63,9 @@ void* h_saveString(void* self, void* ret, void* layer) {
     if (accurateSave.enabled && r) {
         std::string s = gd::readStdString(r);
         if (!s.empty()) {
-            std::string fixed = accurateString(s, GDF(self, GameObject, m_positionX, double),
-                                               GDF(self, GameObject, m_positionY, double));
+            // come GD: X = posizione del nodo, Y = posizione - 90 (scritte con il formato corto di fmt)
+            cc::Point pos = cc::position(self);
+            std::string fixed = accurateString(s, pos.x, pos.y - 90.0);
             if (fixed != s) gd::writeStdString(r, fixed);
         }
     }
@@ -73,8 +73,9 @@ void* h_saveString(void* self, void* ret, void* layer) {
 }
 
 // ============================================================== scie dell'editor
-// La scia del playtest e' disegnata da DrawGridLayer con i punti in LevelEditorLayer::m_playerPoints,
-// aggiunti a 30 fps. Qui si registrano le posizioni a ogni frame e si disegnano con dei CCDrawNode.
+// LevelEditorLayer::postUpdate somma dt in m_trailTimer e aggiunge un punto a m_playerPoints (e a
+// m_player2Points) solo quando supera 1/30 s; LevelEditorLayer::updateDebugDraw li disegna con
+// drawSegment (raggio 0.5, verde P1 / azzurro P2). onPlaytest li cancella.
 Hack& smoothTrail = H("CREATOR/HACK_SMOOTH_EDITOR_TRAIL");
 float s_trailTransparency = 50.f;
 void clearHistory(int which);
@@ -84,13 +85,17 @@ Hack& multiTrails = H("CREATOR/MULTIPLE_EDITOR_TRAILS/HACK_MULTIPLE_EDITOR_TRAIL
     .optButton("CREATOR/MULTIPLE_EDITOR_TRAILS/DROPDOWN/CLEAR_LASTEST", [] { clearHistory(1); })
     .optButton("CREATOR/MULTIPLE_EDITOR_TRAILS/DROPDOWN/CLEAR_OLDEST", [] { clearHistory(2); });
 
-constexpr cc::Color4F kTrailColor{0.4f, 1.f, 0.4f, 1.f}; // la linea verde del playtest
+constexpr cc::Color4F kTrailP1{0.2f, 1.f, 0.2f, 1.f}; // stessi colori di GD
+constexpr cc::Color4F kTrailP2{0.2f, 1.f, 1.f, 1.f};
+constexpr float kTrailRadius = 0.5f;
 using Path = std::vector<cc::Point>;
-std::deque<std::vector<Path>> s_history; // ogni playtest: percorso P1 (+ P2)
-Path s_cur[2];
-void* s_owner = nullptr; // LevelEditorLayer dei nodi
+struct Run {
+    Path p1;
+    std::vector<Path> p2;
+};
+std::deque<Run> s_history; // playtest precedenti
+void* s_owner = nullptr;    // LevelEditorLayer dei nodi
 void* s_histNode = nullptr;
-void* s_curNode = nullptr;
 void* s_objTrajNode = nullptr;
 bool s_histDirty = false;
 float s_lastTransparency = -1.f;
@@ -104,16 +109,14 @@ void clearHistory(int which) {
 }
 
 bool ensureEditorNodes(void* lel) {
-    if (s_owner == lel && s_histNode && s_curNode && s_objTrajNode) return true;
+    if (s_owner == lel && s_histNode && s_objTrajNode) return true;
     s_owner = nullptr;
     void* objLayer = GDF(lel, GJBaseGameLayer, m_objectLayer, void*);
     if (!objLayer) return false;
     s_histNode = cc::drawNodeCreate();
-    s_curNode = cc::drawNodeCreate();
     s_objTrajNode = cc::drawNodeCreate();
-    if (!s_histNode || !s_curNode || !s_objTrajNode) return false;
+    if (!s_histNode || !s_objTrajNode) return false;
     cc::addChild(objLayer, s_histNode, 999);
-    cc::addChild(objLayer, s_curNode, 1000);
     cc::addChild(objLayer, s_objTrajNode, 1001);
     s_owner = lel;
     s_histDirty = true;
@@ -121,113 +124,71 @@ bool ensureEditorNodes(void* lel) {
 }
 
 void drawPath(void* node, const Path& p, cc::Color4F c) {
-    for (size_t i = 1; i < p.size(); i++) cc::drawSegment(node, p[i - 1], p[i], 1.f, c);
+    for (size_t i = 1; i < p.size(); i++) cc::drawSegment(node, p[i - 1], p[i], kTrailRadius, c);
 }
 
 void redrawHistory() {
     cc::drawNodeClear(s_histNode);
     if (multiTrails.enabled) {
-        cc::Color4F c = kTrailColor;
-        c.a = 1.f - std::clamp(s_trailTransparency, 0.f, 95.f) / 100.f;
-        for (auto& run : s_history)
-            for (auto& p : run) drawPath(s_histNode, p, c);
+        float a = 1.f - std::clamp(s_trailTransparency, 0.f, 95.f) / 100.f;
+        cc::Color4F c1 = kTrailP1, c2 = kTrailP2;
+        c1.a = c2.a = a;
+        for (auto& run : s_history) {
+            drawPath(s_histNode, run.p1, c1);
+            for (auto& p : run.p2) drawPath(s_histNode, p, c2);
+        }
     }
     s_histDirty = false;
     s_lastTransparency = s_trailTransparency;
 }
 
-void redrawCurrent() {
-    cc::drawNodeClear(s_curNode);
-    if (!smoothTrail.enabled) return;
-    for (auto& p : s_cur) drawPath(s_curNode, p, kTrailColor);
-}
+namespace lo = gdg::off_unchecked::LevelEditorLayer; // offset verificati sul disassemblato di 2.2091
 
-// LevelEditorLayer non e' validato dai size-check: si ritrova m_editorUI a runtime e si usa lo
-// stesso scostamento per m_playerPoints (sono vicini nella classe)
-intptr_t lelShift(void* lel) {
-    static void* cached = nullptr;
-    static intptr_t shift = INTPTR_MIN;
-    if (lel == cached) return shift;
-    void* ui = gd::editorUI();
-    if (!ui) return INTPTR_MIN;
-    cached = lel;
-    shift = INTPTR_MIN;
-    namespace lo = gdg::off_unchecked::LevelEditorLayer;
-    for (intptr_t d = 0; d <= 0x80 && shift == INTPTR_MIN; d += 8) {
-        for (intptr_t s : {d, -d}) {
-            if (mem::at<void*>(lel, static_cast<uintptr_t>(lo::m_editorUI + s)) == ui) {
-                shift = s;
-                break;
-            }
-        }
-    }
-    MH_LOG("LevelEditorLayer: scostamento m_editorUI = %lld", static_cast<long long>(shift));
-    return shift;
-}
-
-struct RawPoints {
-    cc::Point* first;
-    cc::Point* last;
-    cc::Point* end;
+template <class T>
+struct RawVec {
+    T* first;
+    T* last;
+    T* end;
+    bool valid() const { return first <= last && last <= end && (first == nullptr) == (end == nullptr); }
+    size_t size() const { return valid() ? static_cast<size_t>(last - first) : 0; }
 };
 
-RawPoints* gdPlayerPoints(void* lel) {
-    intptr_t s = lelShift(lel);
-    if (s == INTPTR_MIN) return nullptr;
-    auto v = &mem::at<RawPoints>(lel, static_cast<uintptr_t>(gdg::off_unchecked::LevelEditorLayer::m_playerPoints + s));
-    if (v->first > v->last || v->last > v->end) return nullptr;
-    if ((v->first == nullptr) != (v->end == nullptr)) return nullptr;
-    return v;
+Path copyPoints(const RawVec<cc::Point>& v) {
+    size_t n = std::min<size_t>(v.size(), 1000000);
+    return n ? Path(v.first, v.first + n) : Path();
 }
 
 int playbackMode(void* lel) { return GDF(lel, GJBaseGameLayer, m_playbackMode, int); }
 
-void record(void* lel) {
-    void* players[2] = {gd::player1(lel), gameState<bool>(lel, gd::off::GJGameState::m_isDualMode) ? gd::player2(lel) : nullptr};
-    for (int i = 0; i < 2; i++) {
-        if (!players[i]) continue;
-        cc::Point p = cc::position(players[i]);
-        auto& path = s_cur[i];
-        if (!path.empty()) {
-            const cc::Point& q = path.back();
-            float dx = p.x - q.x, dy = p.y - q.y;
-            if (dx * dx + dy * dy < 0.25f) continue;
-            // salto (teletrasporto, respawn): nuovo tratto non collegato
-            if (dx * dx + dy * dy > 300.f * 300.f) path.clear();
-        }
-        path.push_back(p);
-        if (smoothTrail.enabled && path.size() >= 2)
-            cc::drawSegment(s_curNode, path[path.size() - 2], path.back(), 1.f, kTrailColor);
-    }
+// controllo economico che il layout sia quello atteso (per la 2.209 non e' verificato)
+bool layoutOk(void* lel) {
+    void* ui = gd::editorUI();
+    return ui && mem::at<void*>(lel, lo::m_editorUI) == ui;
 }
 
 void (*o_lelPostUpdate)(void*, float);
 void h_lelPostUpdate(void* self, float dt) {
+    // Smooth Editor Trail: il timer supera sempre 1/30 s, quindi GD aggiunge un punto a ogni frame
+    if (smoothTrail.enabled && playbackMode(self) == 1 && layoutOk(self)) mem::at<float>(self, lo::m_trailTimer) = 1.f;
     o_lelPostUpdate(self, dt);
-    if (!smoothTrail.enabled && !multiTrails.enabled) return;
-    if (playbackMode(self) != 1 || !ensureEditorNodes(self)) return;
-    record(self);
-    // con la scia fluida quella di GD (a 30 fps) viene svuotata per non vederne due
-    if (smoothTrail.enabled) {
-        if (auto v = gdPlayerPoints(self)) v->last = v->first;
-    }
 }
 
 void (*o_lelPlaytest)(void*);
 void h_lelPlaytest(void* self) {
-    // nuovo playtest (non ripresa dalla pausa): il percorso precedente va nella cronologia
-    if (playbackMode(self) == 0) {
-        if (multiTrails.enabled && (!s_cur[0].empty() || !s_cur[1].empty())) {
-            std::vector<Path> run;
-            for (auto& p : s_cur)
-                if (p.size() >= 2) run.push_back(p);
-            if (!run.empty()) s_history.push_back(std::move(run));
+    // nuovo playtest (non ripresa dalla pausa): la linea precedente va nella cronologia prima che GD la cancelli
+    if (multiTrails.enabled && playbackMode(self) == 0 && layoutOk(self)) {
+        Run run;
+        run.p1 = copyPoints(mem::at<RawVec<cc::Point>>(self, lo::m_playerPoints));
+        auto& p2 = mem::at<RawVec<RawVec<cc::Point>>>(self, lo::m_player2Points);
+        for (size_t i = 0; i < p2.size() && i < 1000; i++) {
+            Path p = copyPoints(p2.first[i]);
+            if (p.size() >= 2) run.p2.push_back(std::move(p));
+        }
+        if (run.p1.size() >= 2 || !run.p2.empty()) {
+            s_history.push_back(std::move(run));
             while (s_history.size() > 100) s_history.pop_front();
             s_histDirty = true;
         }
-        s_cur[0].clear();
-        s_cur[1].clear();
-        if (s_curNode && s_owner == self) cc::drawNodeClear(s_curNode);
     }
     o_lelPlaytest(self);
 }
@@ -322,9 +283,10 @@ void drawObjectTrajectory(void* lel, void* obj, float speed) {
             continue;
         if (!hasGroup(obj, GDF(t, EffectGameObject, m_targetGroupID, int))) continue;
         cc::Point off = GDF(t, EffectGameObject, m_moveOffset, cc::Point);
-        // nel trigger 10 unita' = 1 blocco = 30 punti
+        // m_moveOffset e' gia' in punti (30 = 1 blocco): GJBaseGameLayer::triggerMoveCommand lo passa
+        // cosi' com'e' a GJEffectManager::createMoveCommand
         moves.push_back({cc::position(t).x / speed, std::max(0.f, GDF(t, EffectGameObject, m_duration, float)),
-                         {off.x * 3.f, off.y * 3.f}, GDF(t, EffectGameObject, m_easingType, int),
+                         off, GDF(t, EffectGameObject, m_easingType, int),
                          GDF(t, EffectGameObject, m_easingRate, float)});
     }
     if (moves.empty()) return;
@@ -381,23 +343,19 @@ void updateObjectTrajectory(void* lel) {
 
 MH_ON(ev::editorInit, [](void*) {
     // nuovo editor: i nodi del precedente non esistono piu'
-    s_owner = s_histNode = s_curNode = s_objTrajNode = nullptr;
+    s_owner = s_histNode = s_objTrajNode = nullptr;
     s_history.clear();
-    s_cur[0].clear();
-    s_cur[1].clear();
     s_moveTriggers.clear();
 });
 
 MH_EVERY_FRAME(editorExtras) {
     void* lel = gd::editorLayer();
     if (!lel) return;
-    bool any = smoothTrail.enabled || multiTrails.enabled || objectTrajectory.enabled;
+    bool any = multiTrails.enabled || objectTrajectory.enabled;
     if (!any && !s_owner) return;
     if (!ensureEditorNodes(lel)) return;
-    static bool lastSmooth = false, lastMulti = false;
-    if (lastSmooth != smoothTrail.enabled) redrawCurrent();
+    static bool lastMulti = false;
     if (s_histDirty || lastMulti != multiTrails.enabled || s_lastTransparency != s_trailTransparency) redrawHistory();
-    lastSmooth = smoothTrail.enabled;
     lastMulti = multiTrails.enabled;
     updateObjectTrajectory(lel);
 }

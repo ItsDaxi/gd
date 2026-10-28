@@ -17,6 +17,15 @@ Non usarlo insieme a Geode (usa lo stesso `XInput1_4.dll`). In alternativa al pr
 Per disinstallare cancella i due file. Config, macro, screenshot e log stanno in `megahack/` nella cartella del gioco.
 
 ### Novità di questa versione
+**Verifiche sull'eseguibile di GD 2.2091** (disassemblato): tutte le 141 funzioni usate dal mod iniziano dove previsto. Correzioni trovate così:
+- **Physics TPS**: GD calcola i passi con la costante 4 (= 240/60) in `GJBaseGameLayer::update`, non con 240; ora viene cambiata anche quella, prima il numero di tick non cambiava
+- **Custom Object Bypass**: nella 2.2 i limiti sono 1000 oggetti per oggetto custom e 200 oggetti custom (non 50); ora vengono tolti davvero
+- **Smooth Editor Trail**: usa il timer di GD (`m_trailTimer`, 1/30 s), così la linea è quella originale aggiornata a ogni frame
+- **Multiple Editor Trails**: copia la linea di GD prima che il nuovo playtest la cancelli, con gli stessi colori (verde P1, azzurro P2)
+- **Accurate Save**: corretta la Y (GD salva la posizione − 90)
+- **Object Trajectory**: lo spostamento dei trigger move è già in punti, il percorso era 3 volte troppo lungo
+- **Frame Extrapolation**: gestito anche il resto negativo del tick e il time warp
+
 - **No Menu Animations** (finestra Universal): popup senza rimbalzo, menu a tendina e transizioni tra schermate istantanei. Riguarda i menu di GD, non il mod menu
 - **Custom Wave Trail** (Cosmetic): colore fisso, arcobaleno o colori del giocatore, spessore, pulse (normale / nessuno / moltiplicatore / fisso), opacità, scia solida; anche per il giocatore 2. Il colore della wave trail è anche negli effetti di Iconic
 - Funzioni prima non disponibili, ora presenti: Frozen Animations, Classic Particles, Classic Pulse, Ball Rotation Bug, Toolbox Button Bypass, Place Over, Default Song Bypass, Trigger Value Bypass, Custom Object Bypass, Slider Limit, Allow Low Volume, Transparent Lists, Compact Lists, Load Audio to Memory, Smart StartPos, Auto StartPos, Shipcopter, **Physics TPS**

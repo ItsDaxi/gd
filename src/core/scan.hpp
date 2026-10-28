@@ -29,4 +29,11 @@ bool restore(const RipRef& ref);
 // Cerca "cmp r32, imm8" (83 F8+r ib) con un dato immediato; restituisce gli indirizzi dell'immediato
 std::vector<uintptr_t> cmpImm8(uintptr_t func, int8_t imm, size_t maxLen = 0x3000);
 
+// Cerca "cmp r32, imm32" (3D id oppure 81 F8+r id) seguito subito da jb/jbe near (0F 82/0F 86);
+// restituisce gli indirizzi dei salti
+std::vector<uintptr_t> cmpImm32Jbelow(uintptr_t func, int32_t imm, size_t maxLen = 0x3000);
+
+// Byte che trasformano il salto condizionato near in `addr` in un salto incondizionato (jmp + nop)
+std::vector<uint8_t> jccToJmp(uintptr_t addr);
+
 } // namespace mh::scan

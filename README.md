@@ -20,7 +20,8 @@ carica da sola con il gioco e disegna il menu con Dear ImGui sopra la finestra d
   altre lingue caricabili mettendo il loro `.json` in `megahack/langs/`.
 
 > ⚠️ **Stato del progetto.** Il codice compila (MSVC in CI e MinGW) ma **non è ancora stato provato
-> dentro il gioco**. Indirizzi e offset vengono dalle bindings pubbliche e sono verificati come
+> dentro il gioco**. Gli indirizzi delle funzioni usate sono stati controllati sull'eseguibile della 2.2091
+> con `tools/verify_exe.py`. Indirizzi e offset vengono dalle bindings pubbliche e sono verificati come
 > descritto sotto, ma è normale che qualche funzione vada sistemata dopo i primi test. Se qualcosa non
 > va, apri `megahack/log.txt` e guarda quali hook sono falliti.
 

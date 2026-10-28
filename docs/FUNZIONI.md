@@ -82,7 +82,7 @@ Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠�
 |---|---|---|---|
 | Accurate Save | Salvataggio Accurato | ✅ | Object positions are more accurately saved |
 | Copy Hack | Hack Copia | ✅ | Lets you copy any level, without a password |
-| Custom Object Bypass | Bypass Oggetti Personalizzati | ⚠️ | Sperimentale: porta il limite a 127 oggetti custom (immediato trovato a runtime in EditorUI::onNewCustomItem) |
+| Custom Object Bypass | Bypass Oggetti Personalizzati | ⚠️ | Toglie i limiti di EditorUI::onNewCustomItem: 1000 oggetti per oggetto custom e 200 oggetti custom (trovati a runtime, verificati sulla 2.2091) |
 | Default Song Bypass | Bypass Canzone Predefinita | ✅ | Lets you use hidden default songs in the editor |
 | Editor Extension | Estensione Editor | ✅ | Increases the editor length by a factor of 128 |
 | Free Scroll | Scorrimento Libero | ✅ | Allows scrolling out of the editor |
@@ -210,7 +210,7 @@ Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠�
 | Frame Extrapolation | Estrapolazione frame | ⚠️ | Estrapola giocatori e camera; gli altri oggetti in movimento restano a 240 Hz |
 | Fullscreen | Schermo intero | ⚠️ | La modalita' esclusiva usa la finestra senza bordi |
 | Lock Delta 🔴 | Lock Delta | ✅ | Locks the frame time (delta) during gameplay for consistency, used mainly for botting |
-| Physics TPS 🔴 | TPS Fisici | ⚠️ | Sperimentale: reindirizza le costanti 240 / 1/240 trovate in GJBaseGameLayer::update e getModifiedDelta. Non replica la fisica della 2.1 |
+| Physics TPS 🔴 | TPS Fisici | ⚠️ | Sperimentale: cambia le costanti 1/240 (getModifiedDelta) e 4 = 240/60 (passi in GJBaseGameLayer::update). Non replica la fisica della 2.1 |
 | Real Time | Tempo reale | ⚠️ | Approssimato: il delta bloccato viene moltiplicato quando il gioco resta indietro |
 | Unlock FPS | Sblocca FPS | ✅ | Sets the FPS target of the game. Physics will not change unless using physics bypass |
 | Vertical Sync | Vertical Sync | ✅ | Syncs FPS with display Hz, reducing screen tearing |

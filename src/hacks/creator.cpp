@@ -9,22 +9,25 @@ namespace {
 Hack& H(const char* id) { return hack("CREATOR", id); }
 
 Hack& copyHack = H("CREATOR/HACK_COPY_HACK");
-// Custom Object Bypass: il limite di 50 oggetti custom e' un "cmp reg, 50" dentro EditorUI::onNewCustomItem;
-// lo si trova a runtime e lo si porta a 127 (massimo per un immediato a 8 bit)
+// Custom Object Bypass. In EditorUI::onNewCustomItem (2.2091) i limiti sono
+//   cmp eax, 1000 ; jbe ok   (oggetti dentro un oggetto custom)
+//   cmp eax, 200  ; jb  ok   (numero di oggetti custom salvati)
+// Si cercano a runtime e i salti diventano incondizionati.
 std::vector<mem::Patch> s_customPatches;
 Hack& customObjBypass = H("CREATOR/HACK_CUSTOM_OBJECT_BYPASS")
     .toggled([](bool on) {
         if (s_customPatches.empty()) {
             uintptr_t fn = gd::addr::EditorUI::onNewCustomItem ? mem::base() + gd::addr::EditorUI::onNewCustomItem : 0;
             if (fn) {
-                for (int8_t limit : {int8_t(50), int8_t(49)})
-                    for (uintptr_t a : scan::cmpImm8(fn, limit)) s_customPatches.emplace_back(a, std::vector<uint8_t>{0x7F});
+                for (int32_t limit : {1000, 200})
+                    for (uintptr_t a : scan::cmpImm32Jbelow(fn, limit)) s_customPatches.emplace_back(a, scan::jccToJmp(a));
             }
-            MH_LOG("Custom Object Bypass: %zu limiti trovati", s_customPatches.size());
+            MH_LOG("Custom Object Bypass: %zu limiti trovati (attesi 2)", s_customPatches.size());
         }
         for (auto& p : s_customPatches) p.set(on);
     })
-    .partial("Sperimentale: porta il limite a 127 oggetti custom (immediato trovato a runtime in EditorUI::onNewCustomItem)");
+    .partial("Toglie i limiti di EditorUI::onNewCustomItem: 1000 oggetti per oggetto custom e 200 oggetti custom "
+             "(trovati a runtime, verificati sulla 2.2091)");
 Hack& editorExtension = H("CREATOR/HACK_EDITOR_EXTENSION");
 Hack& freeScroll = H("CREATOR/HACK_FREE_SCROLL");
 Hack& hideUI = H("CREATOR/HACK_HIDE_UI").toggled([](bool on) {

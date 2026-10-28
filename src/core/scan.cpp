@@ -80,4 +80,34 @@ std::vector<uintptr_t> cmpImm8(uintptr_t func, int8_t imm, size_t maxLen) {
     return out;
 }
 
+std::vector<uintptr_t> cmpImm32Jbelow(uintptr_t func, int32_t imm, size_t maxLen) {
+    std::vector<uintptr_t> out;
+    auto p = reinterpret_cast<const uint8_t*>(func);
+    if (!mem::readable(p, maxLen)) maxLen = 0x400;
+    if (!mem::readable(p, maxLen)) return out;
+    size_t len = functionLength(p, maxLen);
+    for (size_t i = 0; i + 12 < len; i++) {
+        size_t immAt;
+        if (p[i] == 0x3D) immAt = i + 1;
+        else if (p[i] == 0x81 && p[i + 1] >= 0xF8) immAt = i + 2;
+        else continue;
+        int32_t v;
+        std::memcpy(&v, p + immAt, 4);
+        size_t j = immAt + 4;
+        if (v == imm && p[j] == 0x0F && (p[j + 1] == 0x82 || p[j + 1] == 0x86)) out.push_back(func + j);
+    }
+    return out;
+}
+
+std::vector<uint8_t> jccToJmp(uintptr_t addr) {
+    auto p = reinterpret_cast<const uint8_t*>(addr);
+    int32_t rel;
+    std::memcpy(&rel, p + 2, 4);
+    uintptr_t target = addr + 6 + static_cast<intptr_t>(rel);
+    int32_t nrel = static_cast<int32_t>(static_cast<intptr_t>(target) - static_cast<intptr_t>(addr + 5));
+    std::vector<uint8_t> b{0xE9, 0, 0, 0, 0, 0x90};
+    std::memcpy(b.data() + 1, &nrel, 4);
+    return b;
+}
+
 } // namespace mh::scan
