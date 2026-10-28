@@ -12,7 +12,6 @@ Hack& H(const char* id) { return hack("UNIVERSAL", id); }
 float s_bgColor[4] = {0.25f, 0.1f, 0.45f, 1.f};
 Hack& customBg = H("UNIVERSAL/CUSTOM_BG/HACK_CUSTOM_BG").optColor("NX/COLOUR", s_bgColor)
     .partial("Colora lo sfondo dei menu (sprite di sfondo della scena)");
-Hack& compactLists = H("UNIVERSAL/HACK_COMPACT_LISTS").partial("Non disponibile in questa versione");
 Hack& fastChests = H("UNIVERSAL/HACK_FAST_CHESTS");
 Hack& lockCursor = H("UNIVERSAL/HACK_LOCK_CURSOR");
 Hack& mainMenuPlay = H("UNIVERSAL/HACK_MAIN_MENU_PLAY");

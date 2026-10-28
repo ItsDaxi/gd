@@ -10,7 +10,9 @@ carica da sola con il gioco e disegna il menu con Dear ImGui sopra la finestra d
 - **Tutte le 173 funzioni** elencate in
   [`en-GB.json` di Mega-Hack-Translate](https://github.com/absolllute/Mega-Hack-Translate/blob/master/langs/en-GB.json)
   sono presenti nel menu, più alcune extra della v8 viste nell'immagine di riferimento
-  (Everything Hurts, Freeze Player, Insta Kill, Ignore ESC, Auto Practice Mode).
+  (Everything Hurts, Freeze Player, Insta Kill, Ignore ESC, Auto Practice Mode), più **No Menu Animations**
+  (popup, menu a tendina e transizioni di GD istantanei) e **Custom Wave Trail** (colore fisso/arcobaleno/colori del
+  giocatore, spessore, pulse, opacità, scia solida).
   L'elenco completo con lo stato di ognuna è in **[docs/FUNZIONI.md](docs/FUNZIONI.md)**.
 - Testi e traduzioni presi direttamente dai file di Mega-Hack-Translate: inglese e **italiano** inclusi,
   altre lingue caricabili mettendo il loro `.json` in `megahack/langs/`.

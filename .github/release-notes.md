@@ -1,6 +1,6 @@
 Mod menu in stile **Mega Hack** per Geometry Dash 2.2 su Windows, **senza Geode**.
 
-> ⚠️ **Versione beta.** Il gioco si avvia e il menu si apre (hook 86/86 su 2.2091), ma molte funzioni non sono ancora state provate una per una. Se qualcosa non va, apri una issue allegando `megahack/log.txt`.
+> ⚠️ **Versione beta.** Il gioco si avvia e il menu si apre, ma molte funzioni (soprattutto quelle nuove) non sono ancora state provate una per una. Se qualcosa non va, apri una issue allegando `megahack/log.txt`.
 
 ### Quale file scaricare
 | Versione di GD (Settings → Options, in basso) | File |
@@ -17,10 +17,10 @@ Non usarlo insieme a Geode (usa lo stesso `XInput1_4.dll`). In alternativa al pr
 Per disinstallare cancella i due file. Config, macro, screenshot e log stanno in `megahack/` nella cartella del gioco.
 
 ### Novità di questa versione
-- Menu disposto a colonne come Mega Hack, finestre scorrevoli, controlli a riga intera
-- Tab/Ins aprono e chiudono il menu senza navigare tra i campi
-- In gioco, aprendo il menu, il cursore viene mostrato e sbloccato senza pausa
-- Noclip: una morte per ogni ingresso in un ostacolo (prima contava ogni tick)
-- Slider "Animations (ms)" funzionante con animazione di apertura
+- **No Menu Animations** (finestra Universal): popup senza rimbalzo, menu a tendina e transizioni tra schermate istantanei. Riguarda i menu di GD, non il mod menu
+- **Custom Wave Trail** (Cosmetic): colore fisso, arcobaleno o colori del giocatore, spessore, pulse (normale / nessuno / moltiplicatore / fisso), opacità, scia solida; anche per il giocatore 2. Il colore della wave trail è anche negli effetti di Iconic
+- Funzioni prima non disponibili, ora presenti: Frozen Animations, Classic Particles, Classic Pulse, Ball Rotation Bug, Toolbox Button Bypass, Place Over, Default Song Bypass, Trigger Value Bypass, Custom Object Bypass, Slider Limit, Allow Low Volume, Transparent Lists, Compact Lists, Load Audio to Memory, Smart StartPos, Auto StartPos, Shipcopter, **Physics TPS**
+- Physics TPS e Custom Object Bypass sono **sperimentali**: cercano a runtime nel codice di GD le costanti da cambiare (240 tick/s, limite 50). Il log (`megahack/log.txt`) dice quanti punti sono stati trovati
+- Restano non disponibili 6 funzioni (Accurate Save, Object Trajectory, Smooth/Multiple Editor Trails, Show Trajectory, Frame Extrapolation): il motivo è nel tooltip di ognuna
 
 Elenco completo delle funzioni e del loro stato: [docs/FUNZIONI.md](https://github.com/ItsDaxi/gd/blob/claude/geometry-dash-mega-hack-mod-cj70zj/docs/FUNZIONI.md)

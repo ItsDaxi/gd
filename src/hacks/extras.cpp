@@ -25,6 +25,14 @@ void freezeSprite(void* animated) {
     cc::call<void>("?stopAllActions@CCNode@cocos2d@@QEAAXXZ", animated);
 }
 
+// Ball Rotation Bug: la palla compie un giro in piu' ad ogni rotazione, come il "barrel roll" della 2.0
+Hack& ballRotationBug = hack("COSMETIC", "COSMETIC/HACK_BALL_ROTATION_BUG")
+    .partial("Ricostruzione approssimativa: la rotazione della palla viene raddoppiata");
+void (*o_ballRotation)(void*, float);
+void h_ballRotation(void* self, float speed) {
+    o_ballRotation(self, ballRotationBug.enabled ? speed * 2.f : speed);
+}
+
 // Classic Particles: riattiva le particelle che seguivano il giocatore nella 2.1
 Hack& classicParticles = hack("COSMETIC", "COSMETIC/HACK_CLASSIC_PARTICLES")
     .partial("Riattiva le particelle 'trailing' di PlayerObject: l'aspetto puo' differire dalla 2.1");
@@ -179,6 +187,31 @@ bool h_listInit(void* self, void* list, const char* title, uint32_t color, float
         if (idx >= 0 && mem::readable(vt, 8)) reinterpret_cast<void (*)(void*, uint8_t)>(vt[idx])(sub, 0);
     }
     return r;
+}
+
+// Compact Lists: forza la vista compatta che GD usa gia' per alcune liste (LevelCell::m_compactView,
+// CommentCell::m_compactMode) e l'altezza di cella della variante compatta
+Hack& compactLists = hack("UNIVERSAL", "UNIVERSAL/HACK_COMPACT_LISTS")
+    .partial("Usa la vista compatta interna di GD per livelli e commenti; riapri la lista dopo averla attivata");
+constexpr int kListLevel = 4, kListLevel2 = 5;
+float (*o_cellHeight)(int);
+float h_cellHeight(int type) {
+    float h = o_cellHeight(type);
+    if (compactLists.enabled && type == kListLevel) {
+        float compact = o_cellHeight(kListLevel2);
+        if (compact > 0.f && compact < h) return compact;
+    }
+    return h;
+}
+void (*o_loadFromLevel)(void*, void*);
+void h_loadFromLevel(void* self, void* level) {
+    if (compactLists.enabled && GDF(self, TableViewCell, m_listType, int) == kListLevel) GDF(self, LevelCell, m_compactView, bool) = true;
+    o_loadFromLevel(self, level);
+}
+void (*o_loadFromComment)(void*, void*);
+void h_loadFromComment(void* self, void* comment) {
+    if (compactLists.enabled) GDF(self, CommentCell, m_compactMode, bool) = true;
+    o_loadFromComment(self, comment);
 }
 
 // Load Audio to Memory: gli stream FMOD diventano suoni caricati in RAM
@@ -402,6 +435,7 @@ MH_ON(ev::poReleaseButton, [](void* player, int button, bool& allow) {
 
 MH_INSTALL(extras) {
     using namespace gd;
+    hooks::gd("PlayerObject::runBallRotation", addr::PlayerObject::runBallRotation, h_ballRotation, &o_ballRotation);
     hooks::gd("EditorUI::onCreateObject", addr::EditorUI::onCreateObject, h_onCreateObject, &o_onCreateObject);
     hooks::gd("LevelEditorLayer::objectsAtPosition", addr::LevelEditorLayer::objectsAtPosition, h_objectsAtPosition, &o_objectsAtPosition);
     hooks::gd("SongSelectNode::audioNext", addr::SongSelectNode::audioNext, h_audioNext, &o_audioNext);
@@ -409,6 +443,9 @@ MH_INSTALL(extras) {
     hooks::gd("SliderTouchLogic::ccTouchMoved", addr::SliderTouchLogic::ccTouchMoved, h_sliderMoved, &o_sliderMoved);
     hooks::gd("OptionsLayer::musicSliderChanged", addr::OptionsLayer::musicSliderChanged, h_musicSlider, &o_musicSlider);
     hooks::gd("GJListLayer::init", addr::GJListLayer::init, h_listInit, &o_listInit);
+    hooks::gd("CustomListView::getCellHeight", addr::CustomListView::getCellHeight, h_cellHeight, &o_cellHeight);
+    hooks::gd("LevelCell::loadFromLevel", addr::LevelCell::loadFromLevel, h_loadFromLevel, &o_loadFromLevel);
+    hooks::gd("CommentCell::loadFromComment", addr::CommentCell::loadFromComment, h_loadFromComment, &o_loadFromComment);
     hooks::exported("fmod.dll", "?createStream@System@FMOD@@QEAA?AW4FMOD_RESULT@@PEBDIPEAUFMOD_CREATESOUNDEXINFO@@PEAPEAVSound@2@@Z",
                     h_createStream, &o_createStream);
 }

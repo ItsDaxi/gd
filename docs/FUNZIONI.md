@@ -4,7 +4,7 @@ Generato da `tools/gen_features.py` leggendo il codice sorgente. Nomi e descrizi
 
 Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠️ parziale / con limitazioni · ❌ non disponibile senza Geode o senza patch del binario · 🔴 = conta come cheat (Safe Mode / Cheat Indicator)
 
-**Totale:** 198 funzioni — ✅ 163 · ⚠️ 27 · ❌ 8
+**Totale:** 198 funzioni — ✅ 163 · ⚠️ 29 · ❌ 6
 
 ## Bypass
 
@@ -27,7 +27,7 @@ Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠�
 | Funzione | Italiano | Stato | Note |
 |---|---|---|---|
 | Accurate Percentage | Percentuale Accurata | ✅ | Allows decimal place customisation for the in-game Percentage Decimals setting |
-| Ball Rotation Bug | Bug Rotazione Ball | ❌ | Non disponibile in questa versione |
+| Ball Rotation Bug | Bug Rotazione Ball | ⚠️ | Ricostruzione approssimativa: la rotazione della palla viene raddoppiata |
 | Classic Particles | Particelle Classiche | ⚠️ | Riattiva le particelle 'trailing' di PlayerObject: l'aspetto puo' differire dalla 2.1 |
 | Classic Pulse | Pulsazione Classica | ⚠️ | Calcola la pulsazione ad ogni frame dal metering FMOD della musica (invece che a 60 Hz) |
 | Classic Wave Trail | Wave Trail Classico | ⚠️ | Approssimato: scia dell'onda solida e senza pulsazione |
@@ -80,7 +80,7 @@ Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠�
 
 | Funzione | Italiano | Stato | Note |
 |---|---|---|---|
-| Accurate Save | Salvataggio Accurato | ❌ | Non disponibile in questa versione |
+| Accurate Save | Salvataggio Accurato | ❌ | Non disponibile: la precisione e' nel formato di GameObject::getSaveString (serve una patch del binario) |
 | Copy Hack | Hack Copia | ✅ | Lets you copy any level, without a password |
 | Custom Object Bypass | Bypass Oggetti Personalizzati | ✅ | Removes the object limit for custom objects & lets you save over 50 |
 | Default Song Bypass | Bypass Canzone Predefinita | ✅ | Lets you use hidden default songs in the editor |
@@ -88,12 +88,12 @@ Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠�
 | Free Scroll | Scorrimento Libero | ✅ | Allows scrolling out of the editor |
 | Hide UI | Nascondi UI | ✅ | Hides the editor UI while building |
 | Level Edit | Modifica Livello | ✅ | Lets you edit any level through the pause menu |
-| Multiple Editor Trails | Multiple Scie nell'editor | ❌ | Non disponibile in questa versione |
+| Multiple Editor Trails | Multiple Scie nell'editor | ❌ | Non disponibile: LevelEditorLayer::clearPlayerPoints e' inline su Windows (nessun indirizzo da agganciare) |
 | No C Mark | Nessun Marchio C | ✅ | Removes the (C) mark when uploading copied levels |
 | No Playtest Zoom |  | ✅ | Stops the editor layer zooming in when playtesting, zoom triggers will also be disabled |
-| Object Trajectory |  | ❌ | Non disponibile in questa versione |
+| Object Trajectory |  | ❌ | Non disponibile: richiede la simulazione dei trigger move/rotate |
 | Place Over | Posizionamento Sovrapposto | ✅ | Lets you place the same object over itself in the editor |
-| Smooth Editor Trail | Scia Editor Fluida | ❌ | Non disponibile in questa versione |
+| Smooth Editor Trail | Scia Editor Fluida | ❌ | Non disponibile: LevelEditorLayer::addPlayerPoint e' inline su Windows (nessun indirizzo da agganciare) |
 | Toolbox Button Bypass | Bypass Pulsante Strumenti | ✅ | Allows for more objects in the editor toolbox |
 | Trigger Value Bypass | Bypass Valore Trigger | ✅ | Bypasses trigger control limits |
 | Verify Hack | Hack Verifica | ✅ | Lets you upload unverified levels |
@@ -158,7 +158,7 @@ Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠�
 | Funzione | Italiano | Stato | Note |
 |---|---|---|---|
 | Allow Low Volume | Consenti Volume Basso | ✅ | Removes snapping to 0% when setting volume to 3% or below |
-| Compact Lists | Liste Compatte | ❌ | Non disponibile in questa versione |
+| Compact Lists | Liste Compatte | ⚠️ | Usa la vista compatta interna di GD per livelli e commenti; riapri la lista dopo averla attivata |
 | Custom Background | Sfondo Custom | ⚠️ | Colora lo sfondo dei menu (sprite di sfondo della scena) |
 | Fast Chests | Casse Veloci | ✅ | Speeds up the chest animation |
 | Load Audio to Memory | Carica Audio alla Memoria | ✅ | Loads audio into memory instead of streaming it from your HDD/SSD, can improve performance while slightly increasing load times |
@@ -207,7 +207,7 @@ Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠�
 | Funzione | Italiano | Stato | Note |
 |---|---|---|---|
 | Borderless Classic | Borderless (classico) | ✅ | Classic implementation of borderless fullscreen (separate to GD's own implementation) |
-| Frame Extrapolation | Estrapolazione frame | ❌ | Non disponibile in questa versione |
+| Frame Extrapolation | Estrapolazione frame | ❌ | Non disponibile: richiede di interpolare la posizione di tutti gli oggetti tra due tick |
 | Fullscreen | Schermo intero | ✅ | Allows the game to fill your main display |
 | Lock Delta 🔴 | Lock Delta | ✅ | Locks the frame time (delta) during gameplay for consistency, used mainly for botting |
 | Physics TPS 🔴 | TPS Fisici | ✅ | Unlocks the default 240/s physics limit, setting it to the target FPS/TPS (whichever is highest). This does NOT replicate 2.1 physics |

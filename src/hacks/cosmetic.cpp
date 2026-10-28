@@ -17,7 +17,7 @@ Hack& accuratePct = H("COSMETIC/ACCURATE_PERCENTAGE/HACK_ACCURATE_PERCENTAGE")
     .optInt("COSMETIC/ACCURATE_PERCENTAGE/DROPDOWN/DECIMALS", &s_decimals, 0, 10)
     .optBool("COSMETIC/ACCURATE_PERCENTAGE/DROPDOWN/BETTER_CALCULATION", &s_betterCalc);
 
-Hack& ballRotationBug = H("COSMETIC/HACK_BALL_ROTATION_BUG").partial("Non disponibile in questa versione");
+
 Hack& noCircles = H("COSMETIC/HACK_NO_CIRCLES");
 Hack& classicWaveTrail = H("COSMETIC/HACK_CLASSIC_WAVE_TRAIL").partial("Approssimato: scia dell'onda solida e senza pulsazione");
 Hack& coinShower = H("COSMETIC/HACK_COIN_SHOWER");
