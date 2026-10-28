@@ -4,7 +4,7 @@ Generato da `tools/gen_features.py` leggendo il codice sorgente. Nomi e descrizi
 
 Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠️ parziale / con limitazioni · ❌ non disponibile senza Geode o senza patch del binario · 🔴 = conta come cheat (Safe Mode / Cheat Indicator)
 
-**Totale:** 198 funzioni — ✅ 160 · ⚠️ 27 · ❌ 11
+**Totale:** 198 funzioni — ✅ 163 · ⚠️ 27 · ❌ 8
 
 ## Bypass
 
@@ -82,7 +82,7 @@ Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠�
 |---|---|---|---|
 | Accurate Save | Salvataggio Accurato | ❌ | Non disponibile in questa versione |
 | Copy Hack | Hack Copia | ✅ | Lets you copy any level, without a password |
-| Custom Object Bypass | Bypass Oggetti Personalizzati | ❌ | Non disponibile in questa versione |
+| Custom Object Bypass | Bypass Oggetti Personalizzati | ✅ | Removes the object limit for custom objects & lets you save over 50 |
 | Default Song Bypass | Bypass Canzone Predefinita | ✅ | Lets you use hidden default songs in the editor |
 | Editor Extension | Estensione Editor | ✅ | Increases the editor length by a factor of 128 |
 | Free Scroll | Scorrimento Libero | ✅ | Allows scrolling out of the editor |
@@ -95,7 +95,7 @@ Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠�
 | Place Over | Posizionamento Sovrapposto | ✅ | Lets you place the same object over itself in the editor |
 | Smooth Editor Trail | Scia Editor Fluida | ❌ | Non disponibile in questa versione |
 | Toolbox Button Bypass | Bypass Pulsante Strumenti | ✅ | Allows for more objects in the editor toolbox |
-| Trigger Value Bypass | Bypass Valore Trigger | ❌ | Non disponibile in questa versione |
+| Trigger Value Bypass | Bypass Valore Trigger | ✅ | Bypasses trigger control limits |
 | Verify Hack | Hack Verifica | ✅ | Lets you upload unverified levels |
 
 ## Level
@@ -210,7 +210,7 @@ Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠�
 | Frame Extrapolation | Estrapolazione frame | ❌ | Non disponibile in questa versione |
 | Fullscreen | Schermo intero | ✅ | Allows the game to fill your main display |
 | Lock Delta 🔴 | Lock Delta | ✅ | Locks the frame time (delta) during gameplay for consistency, used mainly for botting |
-| Physics TPS 🔴 | TPS Fisici | ❌ | Non disponibile: in GD 2.2 i 240 tick/s sono una costante dentro GJBaseGameLayer::update |
+| Physics TPS 🔴 | TPS Fisici | ✅ | Unlocks the default 240/s physics limit, setting it to the target FPS/TPS (whichever is highest). This does NOT replicate 2.1 physics |
 | Real Time | Tempo reale | ⚠️ | Approssimato: il delta bloccato viene moltiplicato quando il gioco resta indietro |
 | Unlock FPS | Sblocca FPS | ✅ | Sets the FPS target of the game. Physics will not change unless using physics bypass |
 | Vertical Sync | Vertical Sync | ✅ | Syncs FPS with display Hz, reducing screen tearing |

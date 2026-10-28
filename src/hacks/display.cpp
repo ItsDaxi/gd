@@ -3,7 +3,10 @@
 
 #include <windows.h>
 
+#include <cstring>
 #include <mutex>
+
+#include "core/scan.hpp"
 
 using namespace mh;
 
@@ -21,10 +24,76 @@ Hack& vsync = hack("DISPLAY", "DISPLAY/HACK_VSYNC").toggled([](bool on) {
     if (fn) fn(on ? 1 : 0);
     if (auto gm = gd::gameManager()) GDF(gm, GameManager, m_vsyncEnabled, bool) = on;
 });
+// Physics TPS: GD 2.2 usa la costante 240 (e 1/240) dentro GJBaseGameLayer::update/getModifiedDelta.
+// Senza l'eseguibile si cercano a runtime le istruzioni che leggono quelle costanti e si fanno
+// puntare a una copia modificabile (allocata vicino a GeometryDash.exe).
 float s_tps = 240.f;
+void applyTps(bool on);
 Hack& physicsBypass = hack("DISPLAY", "DISPLAY/PHYSICS_BYPASS/HACK_PHYSICS_BYPASS").isCheat()
     .optFloat("DISPLAY/PHYSICS_BYPASS/SPINNER", &s_tps, 60.f, 2000.f, "%.0f Hz")
-    .partial("Non disponibile: in GD 2.2 i 240 tick/s sono una costante dentro GJBaseGameLayer::update");
+    .toggled([](bool on) { applyTps(on); })
+    .partial("Sperimentale: reindirizza le costanti 240 / 1/240 trovate in GJBaseGameLayer::update e getModifiedDelta. "
+             "Non replica la fisica della 2.1");
+
+struct TpsRef {
+    scan::RipRef ref;
+    int kind; // 0 = double 240, 1 = double 1/240, 2 = float 240, 3 = float 1/240
+};
+std::vector<TpsRef> s_tpsRefs;
+double* s_tpsConst = nullptr; // [0] tps, [1] 1/tps, poi due float
+bool s_tpsScanned = false, s_tpsActive = false;
+
+void updateTpsConstants() {
+    if (!s_tpsConst) return;
+    double tps = std::clamp<double>(s_tps, 1.0, 10000.0);
+    s_tpsConst[0] = tps;
+    s_tpsConst[1] = 1.0 / tps;
+    auto f = reinterpret_cast<float*>(s_tpsConst + 2);
+    f[0] = static_cast<float>(tps);
+    f[1] = static_cast<float>(1.0 / tps);
+}
+
+void scanTps() {
+    s_tpsScanned = true;
+    const uintptr_t funcs[] = {gd::addr::GJBaseGameLayer::update, gd::addr::GJBaseGameLayer::getModifiedDelta};
+    for (uintptr_t rva : funcs) {
+        if (!rva) continue;
+        for (auto& r : scan::sseRipRefs(mem::base() + rva)) {
+            if (!mem::readable(reinterpret_cast<void*>(r.target), 8)) continue;
+            double d;
+            float fl;
+            std::memcpy(&d, reinterpret_cast<void*>(r.target), 8);
+            std::memcpy(&fl, reinterpret_cast<void*>(r.target), 4);
+            int kind = -1;
+            if (d == 240.0) kind = 0;
+            else if (std::abs(d - 1.0 / 240.0) < 1e-15) kind = 1;
+            else if (fl == 240.f) kind = 2;
+            else if (std::abs(fl - 1.f / 240.f) < 1e-9f) kind = 3;
+            if (kind >= 0) s_tpsRefs.push_back({r, kind});
+        }
+    }
+    MH_LOG("Physics TPS: %zu riferimenti a 240/(1/240) trovati", s_tpsRefs.size());
+    if (!s_tpsRefs.empty()) s_tpsConst = static_cast<double*>(scan::allocNear(mem::base(), 64));
+}
+
+void applyTps(bool on) {
+    if (on && !s_tpsScanned) scanTps();
+    if (s_tpsRefs.empty() || !s_tpsConst) return;
+    updateTpsConstants();
+    if (on == s_tpsActive) return;
+    for (auto& t : s_tpsRefs) {
+        if (!on) {
+            scan::restore(t.ref);
+            continue;
+        }
+        uintptr_t target = t.kind == 0   ? reinterpret_cast<uintptr_t>(&s_tpsConst[0])
+                           : t.kind == 1 ? reinterpret_cast<uintptr_t>(&s_tpsConst[1])
+                           : t.kind == 2 ? reinterpret_cast<uintptr_t>(s_tpsConst + 2)
+                                         : reinterpret_cast<uintptr_t>(reinterpret_cast<float*>(s_tpsConst + 2) + 1);
+        scan::redirect(t.ref, target);
+    }
+    s_tpsActive = on;
+}
 Hack& lockDelta = hack("DISPLAY", "DISPLAY/DELTA/HACK_LOCK_DELTA").isCheat();
 Hack& realTime = hack("DISPLAY", "DISPLAY/DELTA/HACK_REAL_TIME").partial("Approssimato: il delta bloccato viene moltiplicato quando il gioco resta indietro");
 Hack& frameExtrapolation = hack("DISPLAY", "DISPLAY/HACK_FRAME_EXTRAPOLATION").partial("Non disponibile in questa versione");
@@ -135,6 +204,7 @@ MH_ON(ev::fmodUpdate, [](void* f) {
 });
 
 MH_EVERY_FRAME(display) {
+    if (s_tpsActive) updateTpsConstants();
     static double last = 0;
     double now = GetTickCount64() / 1000.0;
     if (unlockFps.enabled && now - last > 2.0) {

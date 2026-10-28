@@ -1,5 +1,6 @@
 // Finestra CREATOR (editor)
 #include "common.hpp"
+#include "core/scan.hpp"
 
 using namespace mh;
 
@@ -9,7 +10,22 @@ Hack& H(const char* id) { return hack("CREATOR", id); }
 
 Hack& accurateSave = H("CREATOR/HACK_ACCURATE_SAVE").partial("Non disponibile in questa versione");
 Hack& copyHack = H("CREATOR/HACK_COPY_HACK");
-Hack& customObjBypass = H("CREATOR/HACK_CUSTOM_OBJECT_BYPASS").partial("Non disponibile in questa versione");
+// Custom Object Bypass: il limite di 50 oggetti custom e' un "cmp reg, 50" dentro EditorUI::onNewCustomItem;
+// lo si trova a runtime e lo si porta a 127 (massimo per un immediato a 8 bit)
+std::vector<mem::Patch> s_customPatches;
+Hack& customObjBypass = H("CREATOR/HACK_CUSTOM_OBJECT_BYPASS")
+    .toggled([](bool on) {
+        if (s_customPatches.empty()) {
+            uintptr_t fn = gd::addr::EditorUI::onNewCustomItem ? mem::base() + gd::addr::EditorUI::onNewCustomItem : 0;
+            if (fn) {
+                for (int8_t limit : {int8_t(50), int8_t(49)})
+                    for (uintptr_t a : scan::cmpImm8(fn, limit)) s_customPatches.emplace_back(a, std::vector<uint8_t>{0x7F});
+            }
+            MH_LOG("Custom Object Bypass: %zu limiti trovati", s_customPatches.size());
+        }
+        for (auto& p : s_customPatches) p.set(on);
+    })
+    .partial("Sperimentale: porta il limite a 127 oggetti custom (immediato trovato a runtime in EditorUI::onNewCustomItem)");
 Hack& editorExtension = H("CREATOR/HACK_EDITOR_EXTENSION");
 Hack& freeScroll = H("CREATOR/HACK_FREE_SCROLL");
 Hack& hideUI = H("CREATOR/HACK_HIDE_UI").toggled([](bool on) {
@@ -20,7 +36,46 @@ Hack& noCMark = H("CREATOR/HACK_NO_C_MARK");
 Hack& noPlaytestZoom = H("CREATOR/HACK_NO_PLAYTEST_ZOOM");
 Hack& objectTrajectory = H("CREATOR/HACK_OBJECT_TRAJECTORY").partial("Non disponibile in questa versione");
 Hack& smoothTrail = H("CREATOR/HACK_SMOOTH_EDITOR_TRAIL").partial("Non disponibile in questa versione");
-Hack& triggerValueBypass = H("CREATOR/HACK_TRIGGER_VALUE_BYPASS").partial("Non disponibile in questa versione");
+Hack& triggerValueBypass = H("CREATOR/HACK_TRIGGER_VALUE_BYPASS")
+    .partial("Disattiva i limiti dei valori dei trigger (mappa m_shouldLimitValues di SetupTriggerPopup): "
+             "i valori fuori scala si inseriscono dal campo di testo");
+
+// std::map<int, bool> di MSVC: {nodo sentinella, dimensione}; ogni nodo e'
+// {left, parent, right, color, isnil, pair<int,bool>} -> chiave a +0x1C, valore a +0x20
+void clearLimitMap(void* map) {
+    auto head = *reinterpret_cast<char**>(map);
+    if (!head) return;
+    std::vector<char*> stack;
+    char* root = *reinterpret_cast<char**>(head + 8); // head->_Parent = radice
+    if (root && root != head) stack.push_back(root);
+    int guard = 0;
+    while (!stack.empty() && guard++ < 100000) {
+        char* n = stack.back();
+        stack.pop_back();
+        if (!n || n[0x19] /* _Isnil */) continue;
+        n[0x20] = 0; // valore: false = nessun limite
+        char* l = *reinterpret_cast<char**>(n);
+        char* r = *reinterpret_cast<char**>(n + 16);
+        if (l && !l[0x19]) stack.push_back(l);
+        if (r && !r[0x19]) stack.push_back(r);
+    }
+}
+
+void unlockTriggerPopup(void* popup) {
+    clearLimitMap(&GDF(popup, SetupTriggerPopup, m_shouldLimitValues, char));
+    clearLimitMap(&GDF(popup, SetupTriggerPopup, m_shouldLimitArrowValues, char));
+}
+
+void (*o_valueChanged)(void*, int, float);
+void h_valueChanged(void* self, int prop, float v) {
+    if (triggerValueBypass.enabled) unlockTriggerPopup(self);
+    o_valueChanged(self, prop, v);
+}
+void (*o_updateValue)(void*, int, float);
+void h_updateValue(void* self, int prop, float v) {
+    if (triggerValueBypass.enabled) unlockTriggerPopup(self);
+    o_updateValue(self, prop, v);
+}
 Hack& verifyHack = H("CREATOR/HACK_VERIFY_HACK");
 float s_trailOpacity = 50.f;
 Hack& multiTrails = H("CREATOR/MULTIPLE_EDITOR_TRAILS/HACK_MULTIPLE_EDITOR_TRAILS")
@@ -109,6 +164,8 @@ MH_INSTALL(creator) {
     hooks::gd("ShareLevelLayer::init", addr::ShareLevelLayer::init, h_shareInit, &o_shareInit);
     hooks::gd("EditLevelLayer::onShare", addr::EditLevelLayer::onShare, h_editLevelShare, &o_editLevelShare);
     hooks::gd("EditorUI::getLimitedPosition", addr::EditorUI::getLimitedPosition, h_limitedPos, &o_limitedPos);
+    hooks::gd("SetupTriggerPopup::valueChanged", addr::SetupTriggerPopup::valueChanged, h_valueChanged, &o_valueChanged);
+    hooks::gd("SetupTriggerPopup::updateValue", addr::SetupTriggerPopup::updateValue, h_updateValue, &o_updateValue);
     hooks::gd("EditorUI::constrainGameLayerPosition", addr::EditorUI::constrainGameLayerPosition, h_constrain, &o_constrain);
 }
 
