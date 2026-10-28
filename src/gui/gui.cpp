@@ -76,7 +76,8 @@ static LRESULT CALLBACK hookedWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
         ImGui_ImplWin32_WndProcHandler(hwnd, msg, wp, lp);
         auto& io = ImGui::GetIO();
         if (isMouseMsg(msg) && io.WantCaptureMouse) return 0;
-        if (isKeyMsg(msg) && io.WantCaptureKeyboard) return 0;
+        // la tastiera va al menu solo se e' aperto (o si sta scrivendo in un campo di testo)
+        if (isKeyMsg(msg) && io.WantCaptureKeyboard && (menuOpen() || io.WantTextInput)) return 0;
     }
     return CallWindowProcW(g_origWndProc, hwnd, msg, wp, lp);
 }

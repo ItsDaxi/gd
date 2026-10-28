@@ -419,7 +419,11 @@ void drawMenu() {
     float speed = config::ui().animMs > 0 ? 1000.f / static_cast<float>(config::ui().animMs) : 1000.f;
     g_alpha += (target - g_alpha) * std::min(1.f, dt * speed * 1.5f);
     if (std::abs(g_alpha - target) < 0.01f) g_alpha = target;
-    if (g_alpha <= 0.f) return;
+    if (g_alpha <= 0.f) {
+        // menu chiuso: nessuna finestra deve tenere il focus della tastiera
+        if (ImGui::GetIO().WantCaptureKeyboard && !ImGui::GetIO().WantTextInput) ImGui::SetWindowFocus(nullptr);
+        return;
+    }
 
     std::vector<std::string> windows;
     for (auto& name : windowOrder()) windows.push_back(name);
