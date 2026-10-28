@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag della release (es. v1.0.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        include:
+          - gd: "22091"
+            label: "GD2.2091"
+          - gd: "2209"
+            label: "GD2.209"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configura (MSVC x64)
+        run: cmake -S . -B build -A x64 -DGD_VERSION=${{ matrix.gd }}
+
+      - name: Compila
+        run: cmake --build build --config Release --parallel
+
+      - name: Crea zip
+        shell: pwsh
+        run: |
+          $tag = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ github.event.inputs.tag }}" } else { "${{ github.ref_name }}" }
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item build/Release/MegaHackGD.dll, build/Release/XInput1_4.dll, build/Release/MegaHackInjector.exe, README.md dist/
+          Compress-Archive -Path dist/* -DestinationPath "MegaHackGD-$tag-${{ matrix.label }}.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zip-${{ matrix.label }}
+          path: MegaHackGD-*.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: zip-*
+          merge-multiple: true
+
+      - name: Pubblica la release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          gh release create "$TAG" MegaHackGD-*.zip \
+            --repo "${{ github.repository }}" \
+            --target "${{ github.sha }}" \
+            --title "Mega Hack GD $TAG" \
+            --notes-file .github/release-notes.md \
+            --prerelease
