@@ -1,6 +1,10 @@
 // Finestra LEVEL
 #include "common.hpp"
 
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
+
 #include <random>
 #include <unordered_map>
 #include <windows.h>
@@ -712,19 +716,59 @@ MH_ON(ev::plReset, [](void* pl) {
 });
 
 // ------------------------------------------------------------------ Respawn Time
+namespace mh::speed {
+float current(); // display.cpp
+}
 namespace {
 float s_respawnMs = 1000.f;
 bool s_respawnIgnoreSpeed = false;
 Hack& respawnTime = hack("LEVEL", "LEVEL/RESPAWN_TIME/HACK_RESPAWN_TIME")
     .optFloat("LEVEL/RESPAWN_TIME/DROPDOWN/SPINNER", &s_respawnMs, 0, 5000, "%.0f ms")
     .optBool("LEVEL/RESPAWN_TIME/DROPDOWN/IGNORE_SPEEDHACK", &s_respawnIgnoreSpeed);
+
+// PlayLayer::destroyPlayer (2.2091) crea il ritardo del respawn con
+//   CCSequence(CCDelayTime::create(max(1.0, m_respawnTime)), CCCallFunc(delayedResetLevel))
+// (0.5 invece di 1.0 nell'altro ramo): scrivere m_respawnTime puo' solo allungarlo. Si cambia quindi la
+// durata passata a CCDelayTime::create quando la chiamata arriva da quei due punti.
+#if GD_VERSION == 22091
+constexpr uintptr_t kRespawnDelayReturns[] = {0x513099, 0x513622}; // indirizzi dopo le due call
+#endif
+
+bool isRespawnDelay(uintptr_t ret, float d) {
+#if GD_VERSION == 22091
+    (void)d;
+    for (uintptr_t r : kRespawnDelayReturns)
+        if (ret == mem::base() + r) return true;
+    return false;
+#else
+    // senza indirizzi verificati: il ritardo standard creato dentro destroyPlayer
+    (void)ret;
+    return d == 1.f || d == 0.5f;
+#endif
+}
+
+void* (*o_delayCreate)(float);
+void* h_delayCreate(float d) {
+    if (g_inDestroyPlayer && respawnTime.enabled) {
+#ifdef _MSC_VER
+        auto ret = reinterpret_cast<uintptr_t>(_ReturnAddress());
+#else
+        auto ret = reinterpret_cast<uintptr_t>(__builtin_return_address(0));
+#endif
+        if (isRespawnDelay(ret, d)) {
+            float t = s_respawnMs / 1000.f;
+            // il ritardo scorre col tempo del gioco: con lo speedhack va scalato per restare in tempo reale
+            if (s_respawnIgnoreSpeed) t *= speed::current();
+            d = std::max(0.f, t);
+        }
+    }
+    return o_delayCreate(d);
+}
 } // namespace
-MH_ON(ev::plDestroyPlayer, [](void* pl, void*, void*, bool& allow) {
-    if (!respawnTime.enabled || !allow) return;
-    float t = s_respawnMs / 1000.f;
-    if (s_respawnIgnoreSpeed) t *= cc::timeScale();
-    gameState<float>(pl, gd::off::GJGameState::m_respawnTime) = std::max(0.01f, t);
-});
+
+MH_INSTALL(respawnTime) {
+    hooks::exported("libcocos2d.dll", "?create@CCDelayTime@cocos2d@@SAPEAV12@M@Z", h_delayCreate, &o_delayCreate);
+}
 
 // ------------------------------------------------------------------ StartPos Switcher
 namespace {

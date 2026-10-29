@@ -82,7 +82,7 @@ void apply(void* player, float phase) {
     // pulsazione
     float& pulse = GDF(wave, HardStreak, m_pulseSize, float);
     switch (s_pulseMode) {
-    case 1: pulse = 0.f; break;
+    case 1: pulse = 1.f; break; // larghezza costante
     case 2: pulse = scaled(s_pulse, wave, pulse, s_pulseMul); break;
     case 3: pulse = s_pulseFixed; break;
     default: break;
@@ -95,11 +95,16 @@ void apply(void* player, float phase) {
 
 MH_EVERY_FRAME(waveTrailTime) { s_time += ImGui::GetIO().DeltaTime; }
 
-// dopo l'update del layer (gioco ed editor), prima che la scia venga disegnata
-MH_ON(ev::bglPostUpdate, [](void* layer, float) {
+// subito prima che GD ridisegni la scia (dentro GJBaseGameLayer::update, gioco ed editor):
+// PlayerObject::update ha appena riscritto pulse e colori
+MH_ON(ev::waveStroke, [](void* wave) {
     if (!customWave.enabled) return;
-    apply(gd::player1(layer), 0.f);
-    if (s_bothPlayers) apply(gd::player2(layer), 0.5f);
+    void* layer = gd::gameLayer();
+    if (!layer) return;
+    void* p1 = gd::player1(layer);
+    void* p2 = gd::player2(layer);
+    if (p1 && GDF(p1, PlayerObject, m_waveTrail, void*) == wave) apply(p1, 0.f);
+    else if (s_bothPlayers && p2 && GDF(p2, PlayerObject, m_waveTrail, void*) == wave) apply(p2, 0.5f);
 });
 
 MH_ON(ev::plQuit, [](void*) {

@@ -159,6 +159,23 @@ MH_ON(ev::particleDraw, [](void*, bool& allow) {
         }
 });
 
+// Pulsazione della scia: PlayerObject::update la ricalcola a ogni tick come
+// m_pulseSize = (m_audioScale - 0.1) * 2.1 + 0.4 e HardStreak::updateStroke la usa come moltiplicatore
+// della larghezza; va cambiata subito prima del disegno (evento waveStroke)
+MH_ON(ev::waveStroke, [](void* wave) {
+    float& ps = GDF(wave, HardStreak, m_pulseSize, float);
+    if (noWavePulse.enabled || classicWaveTrail.enabled) {
+        ps = 1.f; // larghezza costante (0 renderebbe la scia sottilissima)
+    } else if (wavePulseSize.enabled) {
+        // updateStroke puo' essere chiamato piu' volte senza un nuovo valore di GD: moltiplica solo quelli nuovi
+        static std::unordered_map<void*, std::pair<float, float>> seen; // base, scritto
+        auto& e = seen[wave];
+        if (ps != e.second) e.first = ps;
+        e.second = e.first * s_wavePulseMul;
+        ps = e.second;
+    }
+});
+
 MH_ON(ev::plPostUpdate, [](void* pl, float) {
     for (auto p : {gd::player1(pl), gd::player2(pl)}) {
         if (!p) continue;
@@ -171,16 +188,6 @@ MH_ON(ev::plPostUpdate, [](void* pl, float) {
         if (wave) {
             if (noWaveTrail.enabled) cc::setVisible(wave, false);
             if (solidWaveTrail.enabled || classicWaveTrail.enabled) GDF(wave, HardStreak, m_isSolid, bool) = true;
-            if (noWavePulse.enabled || classicWaveTrail.enabled) GDF(wave, HardStreak, m_pulseSize, float) = 0.f;
-            else if (wavePulseSize.enabled) {
-                // GD riscrive m_pulseSize ad ogni aggiornamento: moltiplica solo i valori nuovi
-                static std::unordered_map<void*, std::pair<float, float>> seen; // base, scritto
-                float& ps = GDF(wave, HardStreak, m_pulseSize, float);
-                auto& e = seen[wave];
-                if (ps != e.second) e.first = ps;
-                e.second = e.first * s_wavePulseMul;
-                ps = e.second;
-            }
         }
         if (noWaveTrailBehind.enabled && isWave) cc::setVisible(GDF(p, PlayerObject, m_regularTrail, void*), false);
         if (noRobotFire.enabled) {

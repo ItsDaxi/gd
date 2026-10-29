@@ -12,6 +12,7 @@ namespace mh {
 // e bloccano gli effetti sul livello (morte, checkpoint, fine livello, gruppi, camera...)
 extern bool g_simulating;
 extern bool g_simDied; // il giocatore simulato e' morto
+extern bool g_inDestroyPlayer; // dentro PlayLayer::destroyPlayer (per Respawn Time)
 } // namespace mh
 
 namespace mh::ev {
@@ -89,6 +90,7 @@ MH_EVENT(poSpiderDash, void*, bool& /*allow*/)
 MH_EVENT(poStreak, void*, bool& /*allow*/)
 MH_EVENT(poFadeStreak, void*, bool& /*allow*/)
 MH_EVENT(poRingJump, void*, void*, bool& /*allow*/)
+MH_EVENT(waveStroke, void* /*HardStreak*/)          // prima che la scia dell'onda venga ridisegnata
 
 // ------------------------------------------------------------- vari
 MH_EVENT(circleWave, void* /*wave*/)                 // CCCircleWave creato

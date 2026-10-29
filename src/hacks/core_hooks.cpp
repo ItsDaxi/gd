@@ -24,6 +24,7 @@ using namespace mh;
 namespace mh {
 bool g_simulating = false;
 bool g_simDied = false;
+bool g_inDestroyPlayer = false;
 } // namespace mh
 
 namespace {
@@ -75,7 +76,9 @@ void h_plDestroyPlayer(void* self, void* player, void* obj) {
         ev::plNoclipDeath()(self, player);
         return;
     }
+    g_inDestroyPlayer = true;
     o_plDestroyPlayer(self, player, obj);
+    g_inDestroyPlayer = false;
     if (player && GDF(player, PlayerObject, m_isDead, bool)) ev::plDeath()(self, player);
 }
 
@@ -308,6 +311,15 @@ void h_poRingJump(void* self, void* ring, bool skip) {
     if (allow) o_poRingJump(self, ring, skip);
 }
 
+// HardStreak::updateStroke viene chiamato da GJBaseGameLayer::update dopo PlayerObject::update
+// (che ricalcola m_pulseSize dalla musica) e prima di postUpdate: e' l'unico punto in cui
+// cambiare pulse e spessore ha effetto sul disegno
+void (*o_hsUpdateStroke)(void*, float);
+void h_hsUpdateStroke(void* self, float dt) {
+    if (!g_simulating) ev::waveStroke()(self);
+    o_hsUpdateStroke(self, dt);
+}
+
 // ============================================================== vari
 bool (*o_circleInit)(void*, float, float, float, bool, bool);
 bool h_circleInit(void* self, float a, float b, float c, bool d, bool e) {
@@ -460,6 +472,7 @@ MH_INSTALL(core) {
     hooks::gd("PlayerObject::activateStreak", addr::PlayerObject::activateStreak, h_poActivateStreak, &o_poActivateStreak);
     hooks::gd("PlayerObject::fadeOutStreak2", addr::PlayerObject::fadeOutStreak2, h_poFadeStreak, &o_poFadeStreak);
     hooks::gd("PlayerObject::ringJump", addr::PlayerObject::ringJump, h_poRingJump, &o_poRingJump);
+    hooks::gd("HardStreak::updateStroke", addr::HardStreak::updateStroke, h_hsUpdateStroke, &o_hsUpdateStroke);
 
     hooks::gd("CCCircleWave::init", addr::CCCircleWave::init, h_circleInit, &o_circleInit);
     hooks::gd("GameStatsManager::isItemUnlocked", addr::GameStatsManager::isItemUnlocked, h_isItemUnlocked, &o_isItemUnlocked);
