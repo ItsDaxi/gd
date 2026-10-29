@@ -495,17 +495,37 @@ static void autoLayout(const std::map<std::string, size_t>& rows) {
     float screenH = io.DisplaySize.y - margin * 2;
     auto cols = presetColumns();
     float n = static_cast<float>(cols.size());
-    // le colonne riempiono tutta la larghezza (a 1920x1080: 9 finestre da ~210 px)
-    float w = std::clamp((io.DisplaySize.x - margin * 2 - gap * (n - 1)) / n, S(130), S(260));
+    // a scala 1 le colonne riempiono tutta la larghezza (a 1920x1080: 9 finestre da ~210 px);
+    // la scala dell'interfaccia allarga le finestre e, se non stanno piu' tutte, le colonne si riducono
+    float fill = (io.DisplaySize.x - 8.f - 3.f * (n - 1)) / n;
+    float w = std::clamp(fill, 130.f, 260.f) * config::ui().scale;
     g_winWidth = w;
     int maxCols = std::max(1, static_cast<int>((io.DisplaySize.x - margin + gap) / (w + gap)));
     if (static_cast<int>(cols.size()) > maxCols) {
-        // schermo stretto: ridistribuisce le finestre nelle colonne disponibili
-        std::vector<std::string> flat;
-        for (auto& c : cols) flat.insert(flat.end(), c.begin(), c.end());
-        cols.assign(maxCols, {});
-        size_t per = (flat.size() + maxCols - 1) / maxCols;
-        for (size_t i = 0; i < flat.size(); i++) cols[std::min(i / per, cols.size() - 1)].push_back(flat[i]);
+        // non stanno tutte (scala alta o schermo stretto): i gruppi di Mega Hack restano interi e
+        // nello stesso ordine; si uniscono i due gruppi vicini che insieme occupano meno spazio
+        auto groupH = [&](const std::vector<std::string>& g) {
+            float h = 0.f;
+            for (auto& name : g) {
+                auto it = rows.find(name);
+                size_t r = it == rows.end() ? 0 : it->second;
+                if (windowVisible(name, r)) h += std::min(estimatedHeight(name, r), screenH) + gap;
+            }
+            return h;
+        };
+        while (static_cast<int>(cols.size()) > maxCols) {
+            size_t best = 0;
+            float bestH = FLT_MAX;
+            for (size_t i = 0; i + 1 < cols.size(); i++) {
+                float h = groupH(cols[i]) + groupH(cols[i + 1]);
+                if (h < bestH) {
+                    bestH = h;
+                    best = i;
+                }
+            }
+            cols[best].insert(cols[best].end(), cols[best + 1].begin(), cols[best + 1].end());
+            cols.erase(cols.begin() + static_cast<long>(best) + 1);
+        }
     }
     for (size_t c = 0; c < cols.size(); c++) {
         std::vector<std::string> vis;

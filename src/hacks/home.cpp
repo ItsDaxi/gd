@@ -27,10 +27,11 @@ static gui::WindowContent s_homeUI("HOME", [] {
     std::string animFmt = std::string(T("HOME/ANIM_SPEED/PRE")) + ": %dms";
     gui::sliderIntRow("##anim", &ui.animMs, 0, 1000, animFmt.c_str());
 
-    // scala: applicata con "Set Scale" (cambia la dimensione dei font)
+    // scala dell'interfaccia: si applica quando si rilascia lo slider (ricaricare i font a ogni
+    // movimento sarebbe pesante e farebbe cambiare la finestra sotto il mouse)
     static float pendingScale = ui.scale;
-    gui::sliderFloatRow("##scale", &pendingScale, 0.5f, 2.5f, "Scale: %.2fx");
-    if (gui::buttonRow("Set Scale")) {
+    gui::sliderFloatRow("##scale", &pendingScale, 0.5f, 2.5f, "Interface Scale: %.2fx");
+    if (pendingScale != ui.scale && !ImGui::IsMouseDown(ImGuiMouseButton_Left) && !ImGui::GetIO().WantTextInput) {
         ui.scale = pendingScale;
         config::markDirty();
     }
