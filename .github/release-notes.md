@@ -17,6 +17,9 @@ Non usarlo insieme a Geode (usa lo stesso `XInput1_4.dll`). In alternativa al pr
 Per disinstallare cancella i due file. Config, macro, screenshot e log stanno in `megahack/` nella cartella del gioco.
 
 ### Novità di questa versione
+- **Respawn Time** ora funziona anche per accorciare il respawn: GD usa come ritardo max(1 s, tempo impostato), quindi prima si poteva solo allungarlo; ora viene cambiato il ritardo vero (`CCDelayTime` creato in `PlayLayer::destroyPlayer`)
+- **No Wave Pulse**, **Wave Pulse Size** e il pulse di **Custom Wave Trail** ora hanno effetto: GD ricalcola il pulse e ridisegna la scia nello stesso update, prima del punto in cui il mod lo cambiava; ora viene cambiato subito prima del disegno (`HardStreak::updateStroke`)
+
 **Verifiche sull'eseguibile di GD 2.2091** (disassemblato): tutte le 141 funzioni usate dal mod iniziano dove previsto. Correzioni trovate così:
 - **Physics TPS**: GD calcola i passi con la costante 4 (= 240/60) in `GJBaseGameLayer::update`, non con 240; ora viene cambiata anche quella, prima il numero di tick non cambiava
 - **Custom Object Bypass**: nella 2.2 i limiti sono 1000 oggetti per oggetto custom e 200 oggetti custom (non 50); ora vengono tolti davvero
