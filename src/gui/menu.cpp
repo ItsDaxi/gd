@@ -466,26 +466,39 @@ static float estimatedHeight(const std::string& name, size_t rows) {
     return titleHeight() + content;
 }
 
-// Disposizione predefinita a colonne, come nell'immagine di Mega Hack
+// Disposizione predefinita a colonne, come in Mega Hack v9:
+// Mega Hack+Keybinds | Bypass+Replay | Creator | Cosmetic | Level | Status | Universal+Screenshot |
+// Cheat Safety+Utility | Display+Interface+Speedhack. Le finestre che Mega Hack non ha (Iconic,
+// Variables, Favourites) vanno sotto le colonne corte.
 static const std::vector<std::vector<std::string>>& presetColumns() {
     static const std::vector<std::vector<std::string>> cols = {
-        {"BYPASS", "CHEAT_SAFETY", "INTERFACE", "SCREENSHOT"},
+        {"HOME", "KEYBINDS", "FAVOURITES"},
+        {"BYPASS", "REPLAY"},
+        {"CREATOR", "ICONIC", "GM_VAR"},
         {"COSMETIC"},
-        {"CREATOR", "REPLAY"},
         {"LEVEL"},
-        {"UNIVERSAL", "DISPLAY", "SPEEDHACK", "GM_VAR"},
-        {"STATUS", "UTILITY"},
-        {"ICONIC", "HOME", "KEYBINDS", "FAVOURITES"},
+        {"STATUS"},
+        {"UNIVERSAL", "SCREENSHOT"},
+        {"CHEAT_SAFETY", "UTILITY"},
+        {"DISPLAY", "INTERFACE", "SPEEDHACK"},
     };
     return cols;
 }
 
+// Larghezza delle finestre: come in Mega Hack tutte le colonne stanno nello schermo
+static float g_winWidth = 200.f;
+static float windowWidth() { return g_winWidth; }
+
 static void autoLayout(const std::map<std::string, size_t>& rows) {
     auto& io = ImGui::GetIO();
-    float margin = S(6), gap = S(6), w = S(200);
+    float margin = S(4), gap = S(3);
     float screenH = io.DisplaySize.y - margin * 2;
     auto cols = presetColumns();
-    int maxCols = std::max(1, static_cast<int>((io.DisplaySize.x - margin) / (w + gap)));
+    float n = static_cast<float>(cols.size());
+    // le colonne riempiono tutta la larghezza (a 1920x1080: 9 finestre da ~210 px)
+    float w = std::clamp((io.DisplaySize.x - margin * 2 - gap * (n - 1)) / n, S(130), S(260));
+    g_winWidth = w;
+    int maxCols = std::max(1, static_cast<int>((io.DisplaySize.x - margin + gap) / (w + gap)));
     if (static_cast<int>(cols.size()) > maxCols) {
         // schermo stretto: ridistribuisce le finestre nelle colonne disponibili
         std::vector<std::string> flat;
@@ -532,7 +545,7 @@ static void drawWindow(const std::string& name, const std::vector<Hack*>& list, 
     if (!windowVisible(name, list.size())) return;
     auto& st = g_windows[name];
     auto& io = ImGui::GetIO();
-    float width = S(200);
+    float width = windowWidth();
     float th = titleHeight();
     float maxH = st.userMoved || st.maxH <= 0 ? io.DisplaySize.y - st.y - S(6) : st.maxH;
     maxH = std::max(maxH, th + rowHeight() * 2);

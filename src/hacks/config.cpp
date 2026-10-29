@@ -105,8 +105,8 @@ void load() {
     if (j.contains("favourites")) {
         for (auto& id : j["favourites"]) gui::favourites().push_back(id.get<std::string>());
     }
-    // layout v2: le posizioni salvate con la versione precedente (layout sbagliato) vengono ignorate
-    if (j.value("layout", 0) == 2 && j.contains("windows")) {
+    // layout v3 (colonne di Mega Hack v9): le posizioni salvate con le versioni precedenti vengono ignorate
+    if (j.value("layout", 0) == 3 && j.contains("windows")) {
         for (auto& [name, w] : j["windows"].items()) {
             auto& st = gui::windowState(name);
             st.x = w.value("x", st.x);
@@ -148,7 +148,7 @@ void save() {
         if (h.keybind) j["keybinds"][h.id] = h.keybind;
     }
     j["favourites"] = gui::favourites();
-    j["layout"] = 2;
+    j["layout"] = 3;
     for (auto& [name, st] : gui::windowStates()) {
         j["windows"][name] = {{"x", st.x}, {"y", st.y}, {"collapsed", st.collapsed}, {"moved", st.userMoved}};
     }
