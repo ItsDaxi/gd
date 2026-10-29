@@ -121,33 +121,38 @@ MH_ON(ev::editorInit, [](void*) {
 // =================================================================== BYPASS
 namespace {
 
-// Slider Limit: dopo il trascinamento normale sposta il cursore anche oltre la barra
+// Slider Limit: dopo il trascinamento normale sposta il cursore anche oltre la barra.
+// SliderTouchLogic::ccTouchMoved e' un virtuale di CCTouchDelegate, base secondaria di CCLayer a +0x140:
+// il "this" ricevuto punta li' (nel disassemblato GD legge m_length a [this+0x84] = 0x1c4 - 0x140).
+// Prima si usava come inizio dell'oggetto e si leggeva m_thumb fuori dall'oggetto (crash).
+constexpr uintptr_t kTouchDelegateOffset = 0x140;
 Hack& sliderLimit = hack("BYPASS", "BYPASS/HACK_SLIDER_LIMIT");
 void (*o_sliderMoved)(void*, void*, void*);
 void h_sliderMoved(void* self, void* touch, void* event) {
     o_sliderMoved(self, touch, event);
-    if (!sliderLimit.enabled || !touch) return;
-    void* thumb = GDF(self, SliderTouchLogic, m_thumb, void*);
-    void* parent = thumb ? cc::parent(thumb) : nullptr;
-    float length = GDF(self, SliderTouchLogic, m_length, float);
-    if (!thumb || !parent || length <= 0.f) return;
-    // CCTouch::getLocation e CCNode::convertToNodeSpace restituiscono CCPoint: puntatore nascosto
-    cc::Point world, local;
-    auto getLoc = reinterpret_cast<cc::Point* (*)(void*, cc::Point*)>(cc::resolve("?getLocation@CCTouch@cocos2d@@QEBA?AVCCPoint@2@XZ"));
-    auto toNode = reinterpret_cast<cc::Point* (*)(void*, cc::Point*, const cc::Point*)>(
-        cc::resolve("?convertToNodeSpace@CCNode@cocos2d@@QEAA?AVCCPoint@2@AEBV32@@Z"));
-    if (!getLoc || !toNode) return;
-    getLoc(touch, &world);
-    toNode(parent, &local, &world);
-    bool vertical = GDF(self, SliderTouchLogic, m_rotated, bool);
-    float v = vertical ? local.y : local.x;
+    if (!sliderLimit.enabled || !touch || !self) return;
+    void* logic = static_cast<char*>(self) - kTouchDelegateOffset;
+    void* thumb = GDF(logic, SliderTouchLogic, m_thumb, void*);
+    float length = GDF(logic, SliderTouchLogic, m_length, float);
+    if (!thumb || !(length > 0.f) || !cc::isKindOf(thumb, ".?AVSliderThumb@@")) return;
+    // come GD: punto del tocco nello spazio dello slider meno m_position
+    auto toNode = reinterpret_cast<cc::Point* (*)(void*, cc::Point*, void*)>(
+        cc::resolve("?convertTouchToNodeSpace@CCNode@cocos2d@@QEAA?AVCCPoint@2@PEAVCCTouch@2@@Z"));
+    if (!toNode) return;
+    cc::Point local;
+    toNode(logic, &local, touch);
+    cc::Point origin = GDF(logic, SliderTouchLogic, m_position, cc::Point);
+    bool vertical = GDF(logic, SliderTouchLogic, m_rotated, bool);
+    float v = vertical ? local.y - origin.y : local.x - origin.x;
     float half = length * 0.5f;
-    if (v >= -half && v <= half) return; // dentro la barra: ci pensa GD
-    cc::Point pos = cc::position(thumb);
-    if (vertical) pos.y = v;
-    else pos.x = v;
-    cc::setPosition(thumb, pos);
-    cc::call<void>("?activate@CCMenuItem@cocos2d@@UEAAXXZ", thumb); // richiama il callback dello slider
+    if (v >= -half && v <= half) return; // dentro la barra: ci ha gia' pensato GD
+    cc::setPosition(thumb, vertical ? cc::Point(0.f, v) : cc::Point(v, 0.f));
+    // poi GD richiama il callback del cursore e aggiorna la barra
+    if (GDF(logic, SliderTouchLogic, m_activateThumb, bool)) {
+        static int idx = cc::vtableIndex("??_7CCMenuItem@cocos2d@@6B@", "?activate@CCMenuItem@cocos2d@@UEAAXXZ");
+        if (idx >= 0) cc::vcall<void>(thumb, idx);
+    }
+    if (void* slider = GDF(logic, SliderTouchLogic, m_slider, void*)) gd::call<void>(gd::addr::Slider::updateBar, slider);
 }
 
 } // namespace
@@ -242,7 +247,8 @@ Hack& smartStartPos = hack("LEVEL", "LEVEL/SMART_STARTPOS/HACK_SMART_STARTPOS")
     .optBool("LEVEL/SMART_STARTPOS/DROPDOWN/SPEED_PORTALS", &s_ssSpeed)
     .optBool("LEVEL/SMART_STARTPOS/DROPDOWN/SIZE_PORTALS", &s_ssSize)
     .optBool("LEVEL/SMART_STARTPOS/DROPDOWN/MIRROR_PORTALS", &s_ssMirror)
-    .partial("Gli offset di LevelSettingsObject non sono validati dai size-check: verificare in gioco");
+    .partial("Imposta le StartPos quando GD ha finito di creare gli oggetti (PlayLayer::setupHasCompleted); "
+             "offset di LevelSettingsObject verificati sul salvataggio della 2.2091");
 
 int gamemodeFor(int id) {
     switch (id) {
@@ -282,7 +288,7 @@ std::vector<Portal> collectPortals(void* pl, std::vector<void*>* starts) {
         if (id == 31) {
             if (starts) starts->push_back(o);
         } else if (gamemodeFor(id) >= 0 || speedFor(id) >= 0 || id == 99 || id == 101 || id == 45 || id == 46 || id == 286 ||
-                   id == 287) {
+                   id == 287 || id == 10 || id == 11) {
             portals.push_back({x, id});
         }
     });
@@ -294,7 +300,7 @@ void applySettingsTo(void* sp, const std::vector<Portal>& portals, bool legacy) 
     void* settings = GDF(sp, StartPosObject, m_startSettings, void*);
     if (!settings) return;
     double sx = GDF(sp, GameObject, m_positionX, double);
-    int mode = -1, speed = -1, mini = -1, mirror = -1, dual = -1;
+    int mode = -1, speed = -1, mini = -1, mirror = -1, dual = -1, flip = -1;
     for (auto& p : portals) {
         // legacy: considera anche i portali sovrapposti alla StartPos
         if (legacy ? p.x > sx : p.x >= sx) break;
@@ -306,6 +312,8 @@ void applySettingsTo(void* sp, const std::vector<Portal>& portals, bool legacy) 
         if (p.id == 46) mirror = 0;
         if (p.id == 286) dual = 1;
         if (p.id == 287) dual = 0;
+        if (p.id == 10) flip = 0; // gravita' normale
+        if (p.id == 11) flip = 1; // gravita' invertita
     }
     namespace lso = gdg::off_unchecked::LevelSettingsObject;
     if (s_ssGm && mode >= 0) mem::at<int>(settings, lso::m_startMode) = mode;
@@ -313,6 +321,7 @@ void applySettingsTo(void* sp, const std::vector<Portal>& portals, bool legacy) 
     if (s_ssSize && mini >= 0) mem::at<bool>(settings, lso::m_startMini) = mini == 1;
     if (s_ssMirror && mirror >= 0) mem::at<bool>(settings, lso::m_mirrorMode) = mirror == 1;
     if (s_ssGm && dual >= 0) mem::at<bool>(settings, lso::m_startDual) = dual == 1;
+    if (s_ssGm && flip >= 0) mem::at<bool>(settings, lso::m_isFlipped) = flip == 1; // kA11
 }
 
 void applySmartStartPos(void* pl) {
@@ -362,10 +371,21 @@ void setGravity(void* player, bool upsideDown) {
 
 } // namespace
 
-MH_ON(ev::plInit, [](void* pl) {
-    if (smartStartPos.enabled) applySmartStartPos(pl);
-    if (autoStartPos.enabled) createAutoStartPos(pl);
-});
+// In PlayLayer::init gli oggetti del livello non ci sono ancora: GD li crea a blocchi e alla fine
+// chiama setupHasCompleted, che sceglie anche la StartPos di partenza. Smart StartPos va applicato
+// subito prima, Auto StartPos subito dopo.
+namespace {
+void (*o_setupHasCompleted)(void*);
+void h_setupHasCompleted(void* self) {
+    if (smartStartPos.enabled) applySmartStartPos(self);
+    o_setupHasCompleted(self);
+    if (autoStartPos.enabled) createAutoStartPos(self);
+}
+} // namespace
+
+MH_INSTALL(startPosSetup) {
+    hooks::gd("PlayLayer::setupHasCompleted", gd::addr::PlayLayer::setupHasCompleted, h_setupHasCompleted, &o_setupHasCompleted);
+}
 MH_ON(ev::plQuit, [](void*) {
     for (void* sp : g_liveStartPos) cc::release(sp);
     g_liveStartPos.clear();

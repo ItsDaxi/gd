@@ -27,11 +27,20 @@ void* s_container = nullptr;  // nodo invisibile con i giocatori finti (e le lor
 void* s_fake[2] = {};
 void* s_drawNode = nullptr;
 void* s_simReal = nullptr;    // giocatore vero che si sta simulando
-bool s_crashed = false;
+bool s_crashed = false;       // disattivata per questo livello
+int s_failures = 0;           // eccezioni consecutive
+bool s_rebuild = false;       // ricreare i giocatori finti (stato corrotto)
 
 void resetNodes() {
     s_layer = s_container = s_drawNode = nullptr;
     s_fake[0] = s_fake[1] = nullptr;
+}
+
+// toglie i nodi dal livello (usato quando i giocatori finti vanno ricreati)
+void destroyNodes() {
+    if (s_container) cc::removeFromParent(s_container);
+    if (s_drawNode) cc::removeFromParent(s_drawNode);
+    resetNodes();
 }
 
 bool ready() {
@@ -79,6 +88,7 @@ struct SimArgs {
     void* real;
     bool hold;
     cc::Color4F color;
+    bool broken = false; // posizione non valida: lo stato del giocatore finto e' da buttare
 };
 
 void drawDeath(cc::Point p, float r) {
@@ -96,7 +106,14 @@ void simulate(SimArgs* a) {
     gd::call<void>(PlayerObject::copyAttributes, fake, a->real);
     GDF(fake, PlayerObject, m_position, cc::Point) = GDF(a->real, PlayerObject, m_position, cc::Point);
     cc::setPosition(fake, cc::position(a->real));
+    // copyAttributes non copia lo stato del nodo: rotazione e scala restavano quelle della simulazione
+    // precedente e si accumulavano
+    cc::setRotation(fake, cc::rotation(a->real));
+    cc::setScale(fake, cc::scale(a->real));
     GDF(fake, PlayerObject, m_isDead, bool) = false;
+    // gli orb toccati nella simulazione precedente non devono restare "toccati"
+    if (void* rings = GDF(fake, PlayerObject, m_touchingRings, void*))
+        cc::call<void>("?removeAllObjects@CCArray@cocos2d@@QEAAXXZ", rings);
     if (a->hold) gd::call<bool>(PlayerObject::pushButton, fake, 1);
     else gd::call<bool>(PlayerObject::releaseButton, fake, 1);
 
@@ -114,6 +131,10 @@ void simulate(SimArgs* a) {
         gd::call<void>(PlayerObject::update, fake, dt);
         if (PlayerObject::updateRotation) gd::call<void>(PlayerObject::updateRotation, fake, dt);
         cc::Point cur = cc::position(fake);
+        if (!std::isfinite(cur.x) || !std::isfinite(cur.y) || std::abs(cur.x - prev.x) > 1000.f || std::abs(cur.y - prev.y) > 1000.f) {
+            a->broken = true;
+            break;
+        }
         // sfuma l'ultimo tratto
         float fade = n - i < 40 ? (n - i) / 40.f : 1.f;
         cc::drawSegment(s_drawNode, prev, cur, radius, withAlpha(a->color, fade));
@@ -121,12 +142,20 @@ void simulate(SimArgs* a) {
 }
 
 #ifdef _MSC_VER
-// una lettura sbagliata durante la simulazione non deve chiudere il gioco
+// una lettura sbagliata durante la simulazione non deve chiudere il gioco; codice e indirizzo
+// finiscono nel log per capire quale funzione di GD ha dato problemi
+DWORD s_excCode = 0;
+uintptr_t s_excAddr = 0;
+int excFilter(EXCEPTION_POINTERS* e) {
+    s_excCode = e->ExceptionRecord->ExceptionCode;
+    s_excAddr = reinterpret_cast<uintptr_t>(e->ExceptionRecord->ExceptionAddress);
+    return EXCEPTION_EXECUTE_HANDLER;
+}
 bool guardedSimulate(SimArgs* a) {
     __try {
         simulate(a);
         return true;
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
+    } __except (excFilter(GetExceptionInformation())) {
         return false;
     }
 }
@@ -147,9 +176,24 @@ void runPlayer(void* pl, int fakeIdx, void* real) {
     g_simulating = false;
     g_simDied = false;
     s_simReal = nullptr;
-    if (!ok) {
+    if (hold.broken || release.broken) {
+        MH_LOG("Show Trajectory: posizione non valida nella simulazione, giocatori finti ricreati");
+        s_rebuild = true;
+    }
+    if (ok) {
+        s_failures = 0;
+        return;
+    }
+    s_rebuild = true;
+#ifdef _MSC_VER
+    uintptr_t base = mem::base();
+    MH_LOG("Show Trajectory: eccezione 0x%08lX a %p (GeometryDash.exe+0x%llX)", static_cast<unsigned long>(s_excCode),
+           reinterpret_cast<void*>(s_excAddr),
+           static_cast<unsigned long long>(s_excAddr >= base ? s_excAddr - base : 0));
+#endif
+    if (++s_failures >= 10) {
         s_crashed = true;
-        MH_LOG("Show Trajectory: eccezione durante la simulazione, funzione disattivata");
+        MH_LOG("Show Trajectory: troppe eccezioni, disattivata fino al prossimo livello");
     }
 }
 
@@ -207,13 +251,22 @@ void h_incrementJumps(void* self) {
 
 } // namespace
 
-MH_ON(ev::plInit, [](void*) { resetNodes(); s_crashed = false; });
+MH_ON(ev::plInit, [](void*) {
+    resetNodes();
+    s_crashed = false;
+    s_failures = 0;
+    s_rebuild = false;
+});
 MH_ON(ev::plQuit, [](void*) { resetNodes(); });
 
 MH_ON(ev::plPostUpdate, [](void* pl, float) {
     if (s_layer == pl && s_drawNode) cc::drawNodeClear(s_drawNode);
     if (!showTrajectory.enabled || s_crashed || !ready()) return;
     if (GDF(pl, PlayLayer, m_isPaused, bool)) return;
+    if (s_rebuild && s_layer == pl) {
+        destroyNodes();
+        s_rebuild = false;
+    }
     if (!ensureNodes(pl)) return;
     runPlayer(pl, 0, gd::player1(pl));
     if (s_trajP2 && gameState<bool>(pl, gd::off::GJGameState::m_isDualMode)) runPlayer(pl, 1, gd::player2(pl));

@@ -1,5 +1,6 @@
 // Finestra LEVEL
 #include "common.hpp"
+#include "core/paths.hpp"
 
 #ifdef _MSC_VER
 #include <intrin.h>
@@ -599,11 +600,135 @@ Hack& showLayout = hack("LEVEL", "LEVEL/SHOW_LAYOUT/HACK_SHOW_LAYOUT")
     .optBool("LEVEL/SHOW_LAYOUT/DROPDOWN/GROUND/ENABLED", &s_layGround)
     .optBool("LEVEL/SHOW_LAYOUT/DROPDOWN/MG/ENABLED", &s_layMg)
     .optBool("LEVEL/SHOW_LAYOUT/DROPDOWN/OBJ/ENABLED", &s_layObj);
-Hack& showTriggers = hack("LEVEL", "LEVEL/HACK_SHOW_TRIGGERS");
+// In gioco GD non mette i trigger nella scena (rimangono solo nelle sezioni), quindi renderli
+// visibili non basta: si disegnano dei riquadri con il nome nella posizione del trigger.
+Hack& showTriggers = hack("LEVEL", "LEVEL/HACK_SHOW_TRIGGERS")
+    .partial("Disegna un riquadro con il nome al posto di ogni trigger (GD in gioco non ha gli sprite dei trigger nella scena)");
+
+const char* triggerName(int id) {
+    switch (id) {
+    case 29: case 30: case 104: case 105: case 221: case 717: case 718: case 743: case 744: case 899: case 900: case 915: return "Color";
+    case 22: case 23: case 24: case 25: case 26: case 27: case 28: case 55: case 56: case 57: case 58: case 59: case 1915: return "Enter";
+    case 901: return "Move";
+    case 1006: return "Pulse";
+    case 1007: return "Alpha";
+    case 1049: return "Toggle";
+    case 1268: return "Spawn";
+    case 1346: return "Rotate";
+    case 1347: return "Follow";
+    case 1520: return "Shake";
+    case 1585: return "Animate";
+    case 1595: return "Touch";
+    case 1611: return "Count";
+    case 1616: return "Stop";
+    case 1811: return "Instant Count";
+    case 1812: return "On Death";
+    case 1814: return "Follow Y";
+    case 1815: return "Collision";
+    case 1817: return "Pickup";
+    case 1818: return "BG Effect On";
+    case 1819: return "BG Effect Off";
+    case 1912: return "Random";
+    case 1913: return "Zoom";
+    case 1914: return "Static Cam";
+    case 1916: return "Offset Cam";
+    case 1917: return "Reverse";
+    case 1932: return "Player Control";
+    case 1934: return "Song";
+    case 1935: return "Time Warp";
+    case 2015: return "Rotate Cam";
+    case 2062: return "Edge Cam";
+    case 2066: return "Gravity";
+    case 2067: return "Scale";
+    case 2068: return "Adv Random";
+    case 2899: return "Options";
+    case 2900: return "Gradient";
+    case 2901: return "Gameplay Offset";
+    case 2903: return "Particles";
+    case 3006: case 3007: case 3008: case 3009: case 3010: return "Area";
+    case 3600: return "End";
+    case 3602: return "SFX";
+    case 3603: return "Edit SFX";
+    case 3604: return "Event";
+    case 3606: return "BG Speed";
+    case 3608: return "Spawn Particle";
+    case 3609: return "Instant Collision";
+    case 3612: return "MG Speed";
+    case 3613: return "UI";
+    case 3615: return "Time";
+    case 3617: return "Time Control";
+    case 3618: return "Reset";
+    case 3619: return "Item Edit";
+    case 3620: return "Item Compare";
+    case 3640: return "Collision State";
+    case 3641: return "Persistent Item";
+    case 3660: return "Edit Adv Follow";
+    case 3661: return "Retarget Adv Follow";
+    case 3662: return "Link Visible";
+    default: return nullptr;
+    }
+}
+
+std::vector<void*> s_triggers;
+void* s_triggerLayer = nullptr;
+unsigned s_triggerObjCount = 0;
 } // namespace
 
+MH_ON(ev::plInit, [](void*) {
+    s_triggers.clear();
+    s_triggerLayer = nullptr;
+    s_triggerObjCount = 0;
+});
+
+static gui::Overlay s_triggerOverlay([] {
+    if (!showTriggers.enabled) return;
+    void* pl = gd::playLayer();
+    if (!pl) return;
+    void* objects = GDF(pl, GJBaseGameLayer, m_objects, void*);
+    unsigned n = cc::arrayCount(objects);
+    if (pl != s_triggerLayer || n != s_triggerObjCount) {
+        s_triggerLayer = pl;
+        s_triggerObjCount = n;
+        s_triggers.clear();
+        forEach(objects, [](void* o) {
+            if (o && GDF(o, GameObject, m_isTrigger, bool)) s_triggers.push_back(o);
+        });
+    }
+    void* objLayer = GDF(pl, GJBaseGameLayer, m_objectLayer, void*);
+    auto toWorld = reinterpret_cast<cc::Point* (*)(void*, cc::Point*, const cc::Point*)>(
+        cc::resolve("?convertToWorldSpace@CCNode@cocos2d@@QEAA?AVCCPoint@2@AEBV32@@Z"));
+    if (!objLayer || !toWorld) return;
+    cc::Size win = cc::winSize();
+    ImVec2 disp = ImGui::GetIO().DisplaySize;
+    if (win.width <= 0 || win.height <= 0) return;
+    float sx = disp.x / win.width, sy = disp.y / win.height;
+    float layerScale = cc::scale(objLayer);
+    float half = 12.f * layerScale * sx;
+    auto* dl = ImGui::GetBackgroundDrawList();
+    int drawn = 0;
+    for (void* t : s_triggers) {
+        cc::Point local(static_cast<float>(GDF(t, GameObject, m_positionX, double)),
+                        static_cast<float>(GDF(t, GameObject, m_positionY, double)));
+        cc::Point w;
+        toWorld(objLayer, &w, &local);
+        ImVec2 c(w.x * sx, disp.y - w.y * sy);
+        if (c.x < -50 || c.x > disp.x + 50 || c.y < -50 || c.y > disp.y + 50) continue;
+        dl->AddRectFilled(ImVec2(c.x - half, c.y - half), ImVec2(c.x + half, c.y + half), IM_COL32(40, 40, 40, 110));
+        dl->AddRect(ImVec2(c.x - half, c.y - half), ImVec2(c.x + half, c.y + half), IM_COL32(120, 220, 255, 220), 0.f, 0, 1.5f);
+        int id = GDF(t, GameObject, m_objectID, int);
+        char buf[24];
+        const char* name = triggerName(id);
+        if (!name) {
+            snprintf(buf, sizeof(buf), "%d", id);
+            name = buf;
+        }
+        dl->AddText(ImVec2(c.x - half, c.y + half + 1), IM_COL32(255, 255, 255, 230), name);
+        if (++drawn > 600) break;
+    }
+});
+
 MH_ON(ev::plPostUpdate, [](void* pl, float) {
-    if (!showLayout.enabled && !showTriggers.enabled) return;
+    if (!showLayout.enabled) return;
     if (showLayout.enabled) {
         if (s_layBg) cc::setVisible(GDF(pl, GJBaseGameLayer, m_background, void*), false);
         if (s_layMg) cc::setVisible(GDF(pl, GJBaseGameLayer, m_middleground, void*), false);
@@ -619,8 +744,7 @@ MH_ON(ev::plPostUpdate, [](void* pl, float) {
         void* o = vis[i];
         if (!o) continue;
         bool trigger = GDF(o, GameObject, m_isTrigger, bool);
-        if (showTriggers.enabled && trigger) cc::setVisible(o, true);
-        if (showLayout.enabled && s_layObj && !trigger &&
+        if (s_layObj && !trigger &&
             (objType(o) == gd::GameObjectType::Decoration || GDF(o, GameObject, m_isDecoration, bool)))
             cc::setVisible(o, false);
     }
@@ -662,17 +786,83 @@ MH_ON(ev::plInit, [](void* pl) {
 });
 
 // ------------------------------------------------------------------ Jumpscare
+// Alla morte (oltre la percentuale scelta) mostra un'immagine a tutto schermo con un suono forte.
+// Immagine e suono personalizzabili: megahack/jumpscare.png e megahack/jumpscare.mp3 (o .ogg/.wav);
+// senza file si usa un lampo rosso con una faccia disegnata e il suono di morte di GD.
 namespace {
-bool s_jsFrom0 = true;
-float s_jsPercent = 90.f, s_jsProb = 100.f, s_jsTime = 1.f;
+bool s_jsFrom0 = false;
+float s_jsPercent = 50.f, s_jsProb = 100.f, s_jsTime = 1.f;
 Hack& jumpscare = hack("LEVEL", "LEVEL/JUMPSCARE/HACK_JUMPSCARE")
     .optBool("LEVEL/JUMPSCARE/DROPDOWN/ONLY_FROM_0", &s_jsFrom0)
     .optFloat("LEVEL/JUMPSCARE/DROPDOWN/PERCENTAGE", &s_jsPercent, 0, 100, "%.0f%%")
     .optFloat("LEVEL/JUMPSCARE/DROPDOWN/PROBABILITY", &s_jsProb, 0, 100, "%.0f%%")
-    .optFloat("LEVEL/JUMPSCARE/DROPDOWN/TIME_THRESHOLD", &s_jsTime, 0, 10, "%.1fs");
+    .optFloat("LEVEL/JUMPSCARE/DROPDOWN/TIME_THRESHOLD", &s_jsTime, 0, 10, "%.1fs")
+    .partial("Parte quando muori oltre la percentuale scelta. Immagine e suono: megahack/jumpscare.png e "
+             "megahack/jumpscare.mp3 (o .ogg / .wav)");
 float s_jsShow = 0.f;
+constexpr float kJsDuration = 1.4f;
 bool s_jsArmed = true;
 std::mt19937 s_rng{std::random_device{}()};
+unsigned s_jsTexture = 0;
+float s_jsTexW = 0.f, s_jsTexH = 0.f;
+bool s_jsTexTried = false;
+
+// immagine personalizzata caricata con la cache delle texture di cocos (stesso contesto OpenGL di ImGui)
+void loadJumpscareImage() {
+    s_jsTexTried = true;
+    auto file = paths::dataDir() / "jumpscare.png";
+    std::error_code ec;
+    if (!std::filesystem::exists(file, ec)) return;
+    void* cache = cc::call<void*>("?sharedTextureCache@CCTextureCache@cocos2d@@SAPEAV12@XZ");
+    if (!cache) return;
+    std::string path = file.string();
+    void* tex = cc::call<void*>("?addImage@CCTextureCache@cocos2d@@QEAAPEAVCCTexture2D@2@PEBD_N@Z", cache, path.c_str(), false);
+    if (!tex) return;
+    cc::retain(tex);
+    s_jsTexture = cc::call<unsigned>("?getName@CCTexture2D@cocos2d@@UEAAIXZ", tex);
+    s_jsTexW = static_cast<float>(cc::call<unsigned>("?getPixelsWide@CCTexture2D@cocos2d@@UEAAIXZ", tex));
+    s_jsTexH = static_cast<float>(cc::call<unsigned>("?getPixelsHigh@CCTexture2D@cocos2d@@UEAAIXZ", tex));
+    MH_LOG("Jumpscare: immagine %s (%.0fx%.0f)", path.c_str(), s_jsTexW, s_jsTexH);
+}
+
+// suono: file personalizzato oppure quello di morte di GD, a volume pieno con FMOD
+void playJumpscareSound() {
+    void* f = gd::fmod();
+    void* sys = f ? GDF(f, FMODAudioEngine, m_system, void*) : nullptr;
+    static HMODULE fm = GetModuleHandleW(L"fmod.dll");
+    if (!sys || !fm) {
+        MessageBeep(MB_ICONHAND);
+        return;
+    }
+    using CreateFn = int (*)(void*, const char*, unsigned, void*, void**);
+    using PlayFn = int (*)(void*, void*, void*, bool, void**);
+    using VolFn = int (*)(void*, float);
+    static auto create = reinterpret_cast<CreateFn>(GetProcAddress(fm, "?createSound@System@FMOD@@QEAA?AW4FMOD_RESULT@@PEBDIPEAUFMOD_CREATESOUNDEXINFO@@PEAPEAVSound@2@@Z"));
+    static auto play = reinterpret_cast<PlayFn>(GetProcAddress(fm, "?playSound@System@FMOD@@QEAA?AW4FMOD_RESULT@@PEAVSound@2@PEAVChannelGroup@2@_NPEAPEAVChannel@2@@Z"));
+    static auto setVol = reinterpret_cast<VolFn>(GetProcAddress(fm, "?setVolume@ChannelControl@FMOD@@QEAA?AW4FMOD_RESULT@@M@Z"));
+    static void* sound = nullptr;
+    if (!sound && create) {
+        std::error_code ec;
+        std::filesystem::path chosen;
+        for (const char* n : {"jumpscare.mp3", "jumpscare.ogg", "jumpscare.wav"}) {
+            auto p = paths::dataDir() / n;
+            if (std::filesystem::exists(p, ec)) {
+                chosen = p;
+                break;
+            }
+        }
+        if (chosen.empty()) chosen = paths::gameDir() / "Resources" / "explode_11.ogg";
+        std::string path = chosen.string();
+        constexpr unsigned FMOD_DEFAULT_MODE = 0x0, FMOD_CREATESAMPLE = 0x100;
+        if (create(sys, path.c_str(), FMOD_DEFAULT_MODE | FMOD_CREATESAMPLE, nullptr, &sound) != 0) sound = nullptr;
+    }
+    void* channel = nullptr;
+    if (!sound || !play || play(sys, sound, nullptr, false, &channel) != 0) {
+        MessageBeep(MB_ICONHAND);
+        return;
+    }
+    if (channel && setVol) setVol(channel, 1.f);
+}
 } // namespace
 MH_ON(ev::plReset, [](void*) { s_jsArmed = true; });
 MH_ON(ev::plDeath, [](void* pl, void*) {
@@ -681,20 +871,52 @@ MH_ON(ev::plDeath, [](void* pl, void*) {
     if (s_jsFrom0 && GDF(pl, GJBaseGameLayer, m_startPosObject, void*)) return;
     if (gd::percent() < s_jsPercent || gd::levelTime() < s_jsTime) return;
     if (std::uniform_real_distribution<float>(0, 100)(s_rng) > s_jsProb) return;
-    s_jsShow = 1.2f;
-    MessageBeep(MB_ICONHAND);
+    s_jsShow = kJsDuration;
+    playJumpscareSound();
 });
 static gui::Overlay s_jsOverlay([] {
     if (s_jsShow <= 0.f) return;
+    if (!s_jsTexTried) loadJumpscareImage();
+    float t = kJsDuration - s_jsShow; // tempo trascorso
     s_jsShow -= ImGui::GetIO().DeltaTime;
     auto* dl = ImGui::GetForegroundDrawList();
     auto sz = ImGui::GetIO().DisplaySize;
-    dl->AddRectFilled(ImVec2(0, 0), sz, IM_COL32(0, 0, 0, 230));
-    auto* f = gui::bigFont();
-    const char* txt = "BOO!";
-    float size = sz.y * 0.35f;
-    ImVec2 ts = f->CalcTextSizeA(size, FLT_MAX, 0, txt);
-    dl->AddText(f, size, ImVec2((sz.x - ts.x) * 0.5f, (sz.y - ts.y) * 0.5f), IM_COL32(220, 0, 0, 255), txt);
+    // tremolio e zoom iniziale
+    float shake = 18.f * std::max(0.f, 1.f - t * 1.5f);
+    ImVec2 off(std::sin(t * 90.f) * shake, std::cos(t * 77.f) * shake);
+    float zoom = 1.f + 0.25f * std::max(0.f, 1.f - t * 4.f);
+    float fade = std::min(1.f, s_jsShow / 0.3f);
+    auto alpha = static_cast<int>(255 * fade);
+    if (s_jsTexture) {
+        float k = std::max(sz.x / s_jsTexW, sz.y / s_jsTexH) * zoom;
+        ImVec2 isz(s_jsTexW * k, s_jsTexH * k);
+        ImVec2 p0((sz.x - isz.x) * 0.5f + off.x, (sz.y - isz.y) * 0.5f + off.y);
+        dl->AddRectFilled(ImVec2(0, 0), sz, IM_COL32(0, 0, 0, alpha));
+        dl->AddImage(static_cast<ImTextureID>(static_cast<intptr_t>(s_jsTexture)), p0, ImVec2(p0.x + isz.x, p0.y + isz.y),
+                     ImVec2(0, 0), ImVec2(1, 1), IM_COL32(255, 255, 255, alpha));
+        return;
+    }
+    // senza immagine: lampo rosso/nero e una faccia
+    bool flash = static_cast<int>(t * 14.f) % 2 == 0 && t < 0.5f;
+    dl->AddRectFilled(ImVec2(0, 0), sz, flash ? IM_COL32(200, 0, 0, alpha) : IM_COL32(0, 0, 0, alpha));
+    ImVec2 c(sz.x * 0.5f + off.x, sz.y * 0.5f + off.y);
+    float r = sz.y * 0.38f * zoom;
+    ImU32 white = IM_COL32(235, 235, 235, alpha), red = IM_COL32(255, 0, 0, alpha), black = IM_COL32(0, 0, 0, alpha);
+    dl->AddCircleFilled(c, r, IM_COL32(25, 25, 25, alpha), 64);
+    dl->AddCircle(c, r, white, 64, r * 0.03f);
+    for (int side : {-1, 1}) {
+        ImVec2 eye(c.x + side * r * 0.38f, c.y - r * 0.22f);
+        dl->AddCircleFilled(eye, r * 0.17f, white, 32);
+        dl->AddCircleFilled(eye, r * 0.08f, red, 24);
+        dl->AddLine(ImVec2(eye.x - side * r * 0.25f, eye.y - r * 0.3f), ImVec2(eye.x + side * r * 0.15f, eye.y - r * 0.18f), white, r * 0.05f);
+    }
+    ImVec2 m0(c.x - r * 0.5f, c.y + r * 0.25f), m1(c.x + r * 0.5f, c.y + r * 0.65f);
+    dl->AddRectFilled(m0, m1, black, r * 0.08f);
+    for (int i = 0; i < 6; i++) {
+        float x = m0.x + (m1.x - m0.x) * (i + 0.5f) / 6.f;
+        dl->AddTriangleFilled(ImVec2(x - r * 0.06f, m0.y), ImVec2(x + r * 0.06f, m0.y), ImVec2(x, m0.y + r * 0.14f), white);
+        dl->AddTriangleFilled(ImVec2(x - r * 0.06f, m1.y), ImVec2(x + r * 0.06f, m1.y), ImVec2(x, m1.y - r * 0.14f), white);
+    }
 });
 
 // ------------------------------------------------------------------ Random Seed

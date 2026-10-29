@@ -174,13 +174,28 @@ MH_ON(ev::menuGameUpdate, [](void* mgl, float) {
     }
 });
 
-// --- Custom Background: colora lo sprite di sfondo dei menu (primo figlio dei layer del menu)
+// --- Custom Background: colora lo sprite di sfondo dei menu.
+// Prima si prendeva il primo figlio del layer senza controllarne il tipo: nel menu principale e' un
+// MenuGameLayer (non uno sprite) e setColor scriveva nel posto sbagliato (crash). Ora si controlla
+// il tipo con l'RTTI e nel menu principale si usa MenuGameLayer::m_backgroundSprite.
+void* findBackground(void* layer) {
+    unsigned n = cc::arrayCount(cc::children(layer));
+    for (unsigned i = 0; i < n && i < 4; i++) {
+        void* c = cc::arrayAt(cc::children(layer), i);
+        if (cc::isKindOf(c, ".?AVMenuGameLayer@@")) return GDF(c, MenuGameLayer, m_backgroundSprite, void*);
+        if (cc::isKindOf(c, ".?AVCCSprite@cocos2d@@")) return c;
+    }
+    return nullptr;
+}
+
 MH_EVERY_FRAME(customBg) {
     if (!customBg.enabled || gd::gameLayer()) return;
-    auto scene = cc::runningScene();
-    auto layer = cc::arrayAt(cc::children(scene), 0);
-    auto bg = cc::arrayAt(cc::children(layer), 0);
-    if (!bg) return;
+    void* scene = cc::runningScene();
+    if (!scene || cc::isKindOf(scene, ".?AVCCTransitionScene@cocos2d@@")) return;
+    void* layer = cc::arrayAt(cc::children(scene), 0);
+    if (!layer) return;
+    void* bg = findBackground(layer);
+    if (!bg || !cc::isKindOf(bg, ".?AVCCSprite@cocos2d@@")) return;
     cc::Color3B c{static_cast<uint8_t>(s_bgColor[0] * 255), static_cast<uint8_t>(s_bgColor[1] * 255),
                   static_cast<uint8_t>(s_bgColor[2] * 255)};
     cc::setColor(bg, c);

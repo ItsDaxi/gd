@@ -1,4 +1,6 @@
 #include "cocos.hpp"
+
+#include <cstring>
 #include "core/memory.hpp"
 
 #include <windows.h>
@@ -164,6 +166,19 @@ float scale(void* node) {
     return idx >= 0 ? vcall<float>(node, idx) : call<float>("?getScale@CCNode@cocos2d@@UEAAMXZ", node);
 }
 
+float rotation(void* node) {
+    if (!node) return 0.f;
+    static int idx = nodeIdx("?getRotation@CCNode@cocos2d@@UEAAMXZ");
+    return idx >= 0 ? vcall<float>(node, idx) : call<float>("?getRotation@CCNode@cocos2d@@UEAAMXZ", node);
+}
+
+void setRotation(void* node, float r) {
+    if (!node) return;
+    static int idx = nodeIdx("?setRotation@CCNode@cocos2d@@UEAAXM@Z");
+    if (idx >= 0) vcall<void>(node, idx, r);
+    else call<void>("?setRotation@CCNode@cocos2d@@UEAAXM@Z", node, r);
+}
+
 void setScale(void* node, float s) {
     if (!node) return;
     static int idx = nodeIdx("?setScale@CCNode@cocos2d@@UEAAXM@Z");
@@ -203,6 +218,30 @@ void addChild(void* parent, void* child, int z) {
 }
 
 void* nodeCreate() { return call<void*>("?create@CCNode@cocos2d@@SAPEAV12@XZ"); }
+
+// ---------------------------------------------------------------- RTTI
+// x64: vtable[-1] = RTTICompleteObjectLocator {sig=1, offset, cdOffset, typeDesc, classDesc, self} (RVA)
+bool isKindOf(void* obj, const char* rttiName) {
+    if (!obj || !rttiName || !mh::mem::readable(obj, 8)) return false;
+    auto vt = *reinterpret_cast<void***>(obj);
+    if (!mh::mem::readable(vt - 1, 8)) return false;
+    auto col = reinterpret_cast<const uint32_t*>(vt[-1]);
+    if (!mh::mem::readable(col, 24) || col[0] != 1) return false;
+    auto base = reinterpret_cast<const char*>(col) - col[5];
+    auto chd = reinterpret_cast<const uint32_t*>(base + col[4]);
+    if (!mh::mem::readable(chd, 16)) return false;
+    uint32_t count = chd[2];
+    auto arr = reinterpret_cast<const uint32_t*>(base + chd[3]);
+    if (count > 64 || !mh::mem::readable(arr, count * 4)) return false;
+    for (uint32_t i = 0; i < count; i++) {
+        auto bcd = reinterpret_cast<const uint32_t*>(base + arr[i]);
+        if (!mh::mem::readable(bcd, 4)) return false;
+        const char* name = base + bcd[0] + 0x10; // TypeDescriptor: vftable, spare, name[]
+        if (!mh::mem::readable(name, 1)) return false;
+        if (std::strcmp(name, rttiName) == 0) return true;
+    }
+    return false;
+}
 
 // ---------------------------------------------------------------- CCDrawNode
 void* drawNodeCreate() { return call<void*>("?create@CCDrawNode@cocos2d@@SAPEAV12@XZ"); }

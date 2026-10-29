@@ -4,23 +4,23 @@ Generato da `tools/gen_features.py` leggendo il codice sorgente. Nomi e descrizi
 
 Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠️ parziale / con limitazioni · ❌ non disponibile senza Geode o senza patch del binario · 🔴 = conta come cheat (Safe Mode / Cheat Indicator)
 
-**Totale:** 198 funzioni — ✅ 161 · ⚠️ 37 · ❌ 0
+**Totale:** 198 funzioni — ✅ 159 · ⚠️ 39 · ❌ 0
 
 ## Bypass
 
 | Funzione | Italiano | Stato | Note |
 |---|---|---|---|
 | Anti-Kick | Anti-espulsione | ✅ | Prevents you being blocked from playing certain levels |
-| Challenge Level |  | ⚠️ | Sblocca tramite le variabili di gioco (UGV) e le statistiche |
-| Keymaster |  | ⚠️ | Sblocca tramite le variabili di gioco (UGV) e le statistiche |
+| Challenge Level |  | ⚠️ | Sblocca tramite le variabili di gioco (UGV) |
+| Keymaster |  | ⚠️ | Sblocca tramite le variabili di gioco (UGV); le chiavi non vengono toccate |
 | Main Levels | Livelli Principali | ✅ | Unlocks main demon levels |
 | Music Customiser | Customizer Musica | ✅ | Allows for custom practice and menu music |
 | Slider Limit | Limite Slider | ✅ | Let sliders be dragged beyond the visible limit |
 | Text Length | Lunghezza Testo | ✅ | Allows for unlimited text length in text inputs |
-| Treasure Room | Stanza del Tesoro | ⚠️ | Sblocca tramite le variabili di gioco (UGV) e le statistiche |
+| Treasure Room | Stanza del Tesoro | ⚠️ | Apre le porte (UGV e diamanti richiesti dai dialoghi); i forzieri restano quelli veri |
 | Unlock Icons | Sblocca Icone | ✅ | Unlocks all icons |
-| Unlock Shops | Sblocca Negozi | ⚠️ | Mostra statistiche (monete) sufficienti ad aprire i negozi; gli orbs non vengono toccati |
-| Unlock Vaults | Sblocca Vault | ⚠️ | Sblocca tramite le variabili di gioco (UGV) e le statistiche |
+| Unlock Shops | Sblocca Negozi | ⚠️ | Sblocca tramite le variabili di gioco (UGV); monete e orbs non vengono toccati |
+| Unlock Vaults | Sblocca Vault | ⚠️ | Sblocca tramite le variabili di gioco (UGV) e i requisiti di ingresso |
 
 ## Cosmetic
 
@@ -133,7 +133,7 @@ Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠�
 | Insta Kill |  | ✅ |  |
 | Instant Complete 🔴 | Completamento Istantaneo | ✅ | Teleports the player to the end of a level |
 | Jump Hack 🔴 | Hack Salto | ✅ | Unlimited jump height |
-| Jumpscare | Jumpscare | ✅ | Boo |
+| Jumpscare | Jumpscare | ⚠️ | Parte quando muori oltre la percentuale scelta. Immagine e suono: megahack/jumpscare.png e megahack/jumpscare.mp3 (o .ogg / .wav) |
 | No Collision 🔴 | No Collisione | ✅ |  |
 | Noclip 🔴 | Noclip | ✅ | Makes the player invincible. |
 | Noclip Limits | Limiti Noclip | ✅ | Kills the player after certain accuracy thresholds, requires Noclip |
@@ -149,8 +149,8 @@ Legenda stato: ✅ implementata (compilata, non ancora provata in gioco) · ⚠�
 | Show Hitboxes Trail 🔴 | Mostra Traccia Hitbox | ✅ | Shows a trail of where your player's hitbox went during an attempt, Show Hitboxes required |
 | Show Layout | Mostra Layout | ✅ | Removes all decoration and colour from levels |
 | Show Trajectory | Mostra Traiettoria | ⚠️ | Sperimentale: simula il giocatore con le funzioni di fisica di GD (checkCollisions/update). I trigger toccati durante la simulazione non vengono attivati, quindi il percorso puo' divergere dopo trigger, portali di modalita' o teletrasporti |
-| Show Triggers | Mostra Trigger | ✅ | Shows triggers in level |
-| Smart StartPos | StartPos Intelligente | ⚠️ | Gli offset di LevelSettingsObject non sono validati dai size-check: verificare in gioco |
+| Show Triggers | Mostra Trigger | ⚠️ | Disegna un riquadro con il nome al posto di ogni trigger (GD in gioco non ha gli sprite dei trigger nella scena) |
+| Smart StartPos | StartPos Intelligente | ⚠️ | Imposta le StartPos quando GD ha finito di creare gli oggetti (PlayLayer::setupHasCompleted); offset di LevelSettingsObject verificati sul salvataggio della 2.2091 |
 | StartPos Switcher | Switcher StartPos | ✅ | Lets you switch between multiple start positions in-level |
 
 ## Universal

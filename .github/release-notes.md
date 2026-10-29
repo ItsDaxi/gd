@@ -17,6 +17,15 @@ Non usarlo insieme a Geode (usa lo stesso `XInput1_4.dll`). In alternativa al pr
 Per disinstallare cancella i due file. Config, macro, screenshot e log stanno in `megahack/` nella cartella del gioco.
 
 ### Novità di questa versione
+**Correzione importante (statistiche):** Main Levels, Unlock Shops/Vaults, Treasure Room e Keymaster restituivano stelle/monete/diamanti/chiavi finti (9999) a *ogni* lettura delle statistiche, anche quando GD le incrementava e salvava o le mandava al server. Ora i valori finti valgono solo dentro le schermate che controllano un requisito, e lì ogni scrittura delle statistiche viene bloccata. Main Levels ora usa le monete segrete (il vero requisito dei livelli principali) invece delle stelle.
+
+- **Slider Limit**: non manda più in crash il gioco (veniva letto l'oggetto sbagliato: `ccTouchMoved` riceve il puntatore spostato di 0x140)
+- **Custom Backgrounds**: non manda più in crash il gioco (veniva colorato un layer come se fosse uno sprite); nel menu principale colora lo sfondo vero
+- **Smart StartPos** e **Auto StartPos**: ora vengono applicati quando GD ha finito di creare gli oggetti del livello (prima la lista era vuota); aggiunti i portali di gravità
+- **Show Triggers**: GD in gioco non ha i trigger nella scena, quindi ora vengono disegnati dei riquadri con il nome del trigger
+- **Jumpscare**: suono vero (o `megahack/jumpscare.mp3`), immagine personalizzabile (`megahack/jumpscare.png`), soglia predefinita 50%
+- **Show Trajectory**: copia anche rotazione e scala del giocatore, ricrea i giocatori finti se lo stato si rompe e scrive nel log l'eventuale errore invece di spegnersi per sempre
+
 - **Respawn Time** ora funziona anche per accorciare il respawn: GD usa come ritardo max(1 s, tempo impostato), quindi prima si poteva solo allungarlo; ora viene cambiato il ritardo vero (`CCDelayTime` creato in `PlayLayer::destroyPlayer`)
 - **No Wave Pulse**, **Wave Pulse Size** e il pulse di **Custom Wave Trail** ora hanno effetto: GD ricalcola il pulse e ridisegna la scia nello stesso update, prima del punto in cui il mod lo cambiava; ora viene cambiato subito prima del disegno (`HardStreak::updateStroke`)
 

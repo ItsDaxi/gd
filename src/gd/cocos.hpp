@@ -71,6 +71,8 @@ void* parent(void* node);
 Point position(void* node);
 void setPosition(void* node, Point p);
 float scale(void* node);
+float rotation(void* node);
+void setRotation(void* node, float r);
 void setScale(void* node, float s);
 int zOrder(void* node);
 void setZOrder(void* node, int z);
@@ -109,6 +111,10 @@ void streakReset(void* streak);
 
 // --- CCTransitionFade & co. ---
 void* transitionCreate(int type, float duration, void* scene);
+
+// --- RTTI MSVC: true se l'oggetto e' della classe indicata o la eredita
+// (nome decorato del tipo, es. ".?AVCCSprite@cocos2d@@")
+bool isKindOf(void* obj, const char* rttiName);
 
 // --- Clipboard / misc ---
 bool hasExport(const char* symbol);
