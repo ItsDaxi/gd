@@ -3,3 +3,6 @@ out/
 .vs/
 *.user
 __pycache__/
+
+# eseguibile di Geometry Dash (copyright RobTop): non va nel repository
+GeometryDash.exe
